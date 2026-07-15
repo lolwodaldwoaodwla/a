@@ -1,4 +1,3 @@
-
 local _iter_gc = getgc(true)
 for k, v in pairs(_iter_gc) do
     if pcall(function()
