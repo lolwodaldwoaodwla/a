@@ -1,30 +1,22 @@
---[[
-    pidors.cc v5.0 — LinoriaLib Edition
-    Rewrite: custom GUI -> LinoriaLib
-    Fix: sticky aim + aimbot in same block (shared locals)
-    Fix: register overflow (LinoriaLib handles all GUI)
-]]
 
--- ════════════════════════════════════════════════
--- ════════════════════════════════════
---   ANTI-CHEAT BYPASS (kick bypass)
--- ════════════════════════════════════
-for k, v in pairs(getgc(true)) do
+local _iter_gc = getgc(true)
+for k, v in pairs(_iter_gc) do
     if pcall(function()
         return rawget(v, "indexInstance")
-    end) and type(rawget(v, "indexInstance")) == "table" and (rawget(v, "indexInstance"))[1] == "kick" then
-        setreadonly(v, false)
-        v.tvk = {
-            "kick",
-            function()
-                return game.Workspace:WaitForChild("")
-            end
-        }
+    end) then
+        local _indexInst = rawget(v, "indexInstance")
+        if type(_indexInst) == "table" and _indexInst[1] == "kick" then
+            setreadonly(v, false)
+            v.tvk = {
+                "kick",
+                function()
+                    return game.Workspace:WaitForChild("")
+                end
+            }
+        end
     end
 end
 
---   SERVICES
--- ════════════════════════════════════════════════
 local Players          = game:GetService("Players")
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -35,25 +27,41 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer      = Players.LocalPlayer
 local Mouse            = LocalPlayer:GetMouse()
 
--- Global compat tables
-if not CoolDowns then CoolDowns = {} end
-if not CoolDowns.AutoPickUps then CoolDowns.AutoPickUps = {} end
-if CoolDowns.AutoPickUps.MoneyCooldown == nil then CoolDowns.AutoPickUps.MoneyCooldown = false end
-if not Settings then Settings = {} end
-if Settings.IsDead == nil then Settings.IsDead = false end
-if not toggle_states then toggle_states = {} end
-if not connection_table then connection_table = {} end
+if not CoolDowns then
+    CoolDowns = {}
+end
+if not CoolDowns.AutoPickUps then
+    CoolDowns.AutoPickUps = {}
+end
+if CoolDowns.AutoPickUps.MoneyCooldown == nil then
+    CoolDowns.AutoPickUps.MoneyCooldown = false
+end
+if not Settings then
+    Settings = {}
+end
+if Settings.IsDead == nil then
+    Settings.IsDead = false
+end
+if not toggle_states then
+    toggle_states = {}
+end
+if not connection_table then
+    connection_table = {}
+end
 
--- ════════════════════════════════════════════════
---   LINORIALIB
--- ════════════════════════════════════════════════
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))();
-local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))();
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"))();
+local _ls_Library_url = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"
+local _ls_Library_data = game:HttpGet(_ls_Library_url)
+local _ls_Library = loadstring(_ls_Library_data)
+local Library = _ls_Library()
+local _ls_ThemeManager_url = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"
+local _ls_ThemeManager_data = game:HttpGet(_ls_ThemeManager_url)
+local _ls_ThemeManager = loadstring(_ls_ThemeManager_data)
+local ThemeManager = _ls_ThemeManager()
+local _ls_SaveManager_url = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"
+local _ls_SaveManager_data = game:HttpGet(_ls_SaveManager_url)
+local _ls_SaveManager = loadstring(_ls_SaveManager_data)
+local SaveManager = _ls_SaveManager()
 
--- ════════════════════════════════════════════════
---   SETTINGS TABLE (shared across all blocks)
--- ════════════════════════════════════════════════
 local P = {
     Fly_Speed = 65, Fly_Method = "Velocity",
     BredMakurz_Distance = 200,
@@ -84,9 +92,6 @@ local P = {
     Fov_Value = 80,
 }
 
--- ════════════════════════════════════════════════
---   WINDOW + TABS
--- ════════════════════════════════════════════════
 local Window = Library:CreateWindow({
     Title = 'pidors.cc v5.0',
     Center = true,
@@ -106,13 +111,12 @@ local Tabs = {
     ['UI Settings'] = Window:AddTab('UI Settings'),
 }
 
--- ════════════════════════════════════════════════
---   UTILITIES
--- ════════════════════════════════════════════════
 local function formatName(name)
     name = string.gsub(name, "([a-z])([A-Z])", "%1 %2")
     local usIdx = string.find(name, "_")
-    if usIdx then name = string.sub(name, 1, usIdx - 1) end
+    if usIdx then
+        name = string.sub(name, 1, usIdx - 1)
+    end
     return name
 end
 
@@ -120,9 +124,6 @@ local cloneref = cloneref or function(...) return ... end
 
 local MeleeUp_Parts = {"Right Arm", "Left Arm", "Right Leg", "Left Leg", "Head", "HumanoidRootPart", "Torso"}
 
--- ════════════════════════════════════════════════
---   FORWARD DECLARATIONS (Enable/Disable funcs)
--- ════════════════════════════════════════════════
 local Fly_Enable, Fly_Disable
 local Noclip_Enable, Noclip_Disable
 local InfiniteStamina_Enable, InfiniteStamina_Disable
@@ -147,11 +148,7 @@ local NoFallDamage_Enable, NoFallDamage_Disable
 local Ragebot_Enable, Ragebot_Disable
 local AntiAim_Enable, AntiAim_Disable
 
--- ════════════════════════════════════════════════
---   GAME LOGIC
--- ════════════════════════════════════════════════
 
--- ── Block 1: Fly ───────────────────────────────
 do
     local Fly_Enabled = false
     local Fly_Connection = nil
@@ -166,10 +163,18 @@ do
             if not hrp then return end
             local cam = Workspace.CurrentCamera
             local velocity = Vector3.new(0, 0, 0)
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then velocity = velocity + cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then velocity = velocity - cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then velocity = velocity - cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then velocity = velocity + cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                velocity = velocity + cam.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                velocity = velocity - cam.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                velocity = velocity - cam.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                velocity = velocity + cam.CFrame.RightVector
+            end
             hrp.Velocity = velocity * P.Fly_Speed
             if P.Fly_Method == "Ragdoll" then
                 local fly_event = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("__RZDONL")
@@ -185,12 +190,17 @@ do
     Fly_Disable = function()
         if not Fly_Enabled then return end
         Fly_Enabled = false
-        if Fly_Connection then Fly_Connection:Disconnect(); Fly_Connection = nil end
+        if Fly_Connection then
+            Fly_Connection:Disconnect(); Fly_Connection = nil
+        end
         local char = LocalPlayer.Character
         if char then
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.Velocity = Vector3.new(0, 0, 0) end
-            for _, part in ipairs(char:GetDescendants()) do
+            if hrp then
+                hrp.Velocity = Vector3.new(0, 0, 0)
+            end
+            local _iter_part = char:GetDescendants()
+            for _, part in ipairs(_iter_part) do
                 if part:IsA("BasePart") then
                     pcall(function()
                         part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
@@ -202,7 +212,6 @@ do
     end
 end
 
--- ── Block 2: BredMakurz (Safe/Register ESP) ───
 do
     local BredMakurz_Enabled = false
     local bredMakurzConnection = nil
@@ -213,20 +222,26 @@ do
         local character = LocalPlayer.Character
         if not character or not character:FindFirstChild("HumanoidRootPart") then return end
         local playerPosition = character.HumanoidRootPart.Position
-        for _, v in pairs(bredMakurzFolder:GetChildren()) do
+        local _iter_v = bredMakurzFolder:GetChildren()
+        for _, v in pairs(_iter_v) do
             local objectPosition = nil
             if v:IsA("Model") then
                 if v.PrimaryPart and v.PrimaryPart:IsA("BasePart") then
                     objectPosition = v.PrimaryPart.Position
                 else
                     local part = v:FindFirstChildOfClass("BasePart")
-                    if part then objectPosition = part.Position else continue end
+                    if not part then
+                        -- skip
+                    else
+                        objectPosition = part.Position
+                    end
                 end
             elseif v:IsA("BasePart") then
                 objectPosition = v.Position
             else
-                continue
+                objectPosition = nil
             end
+            if objectPosition then
             local distance = (objectPosition - playerPosition).Magnitude
             local existingGui = v:FindFirstChild("Ahh")
             if distance <= P.BredMakurz_Distance then
@@ -238,7 +253,11 @@ do
                         billboard.Adornee = v
                     elseif v:IsA("Model") then
                         local part = v:FindFirstChildOfClass("BasePart")
-                        if part then billboard.Adornee = part else continue end
+                        if not part then
+                            -- skip
+                        else
+                            billboard.Adornee = part
+                        end
                     else
                         billboard.Adornee = v
                     end
@@ -265,20 +284,23 @@ do
             elseif existingGui then
                 existingGui:Destroy()
             end
+            end
         end
     end
 
-    -- Expose toggle for GUI
     _G.Pidors_BredMakurz = function(v)
         BredMakurz_Enabled = v
         if v then
             if bredMakurzConnection then bredMakurzConnection:Disconnect() end
             bredMakurzConnection = RunService.Heartbeat:Connect(ApplyBredMakurzModification)
         else
-            if bredMakurzConnection then bredMakurzConnection:Disconnect(); bredMakurzConnection = nil end
+            if bredMakurzConnection then
+                bredMakurzConnection:Disconnect(); bredMakurzConnection = nil
+            end
             local folder = Workspace.Map:FindFirstChild("BredMakurz")
             if folder then
-                for _, obj in pairs(folder:GetChildren()) do
+                local _iter_obj = folder:GetChildren()
+                for _, obj in pairs(_iter_obj) do
                     pcall(function() local gui = obj:FindFirstChild("Ahh"); if gui then gui:Destroy() end end)
                 end
             end
@@ -290,7 +312,8 @@ do
         if BredMakurz_Enabled then
             local folder = Workspace.Map:FindFirstChild("BredMakurz")
             if folder then
-                for _, obj in pairs(folder:GetChildren()) do
+                local _iter_obj = folder:GetChildren()
+                for _, obj in pairs(_iter_obj) do
                     pcall(function() local gui = obj:FindFirstChild("Ahh"); if gui then gui:Destroy() end end)
                 end
             end
@@ -298,7 +321,6 @@ do
     end
 end
 
--- ── Block 3: Player ESP ─────────────────────────
 do
     local ESP_Drawings = {}
     local ESP_Highlights = {}
@@ -350,28 +372,40 @@ do
     local function ESP_Remove(Player)
         if ESP_Drawings[Player] then
             for k, drw in pairs(ESP_Drawings[Player]) do
-                if k == "Skeleton" then for _, ln in ipairs(drw) do pcall(function() ln:Remove() end) end
-                else pcall(function() drw:Remove() end) end
+                if k == "Skeleton" then
+                    for _, ln in ipairs(drw) do
+                        pcall(function() ln:Remove() end)
+                    end
+                else
+                    pcall(function() drw:Remove() end)
+                end
             end
             ESP_Drawings[Player] = nil
         end
-        if ESP_Highlights[Player] then pcall(function() ESP_Highlights[Player]:Destroy() end); ESP_Highlights[Player] = nil end
-        if ESP_CharConnections[Player] then pcall(function() ESP_CharConnections[Player]:Disconnect() end); ESP_CharConnections[Player] = nil end
+        if ESP_Highlights[Player] then
+            pcall(function() ESP_Highlights[Player]:Destroy() end); ESP_Highlights[Player] = nil
+        end
+        if ESP_CharConnections[Player] then
+            pcall(function() ESP_CharConnections[Player]:Disconnect() end); ESP_CharConnections[Player] = nil
+        end
         local paKey = "_pa_" .. Player.UserId
-        if ESP_CharConnections[paKey] then pcall(function() ESP_CharConnections[paKey]:Disconnect() end); ESP_CharConnections[paKey] = nil end
+        if ESP_CharConnections[paKey] then
+            pcall(function() ESP_CharConnections[paKey]:Disconnect() end); ESP_CharConnections[paKey] = nil
+        end
     end
 
     local function ESP_HideAll(d)
         for k, drw in pairs(d) do
-            if k == "Skeleton" then for _, ln in ipairs(drw) do ln.Visible = false end
+            if k == "Skeleton" then
+                for _, ln in ipairs(drw) do ln.Visible = false
+            end
             else drw.Visible = false end
         end
     end
 
     _G.Pidors_ESP_HideAll = function()
         for Player, d in pairs(ESP_Drawings) do ESP_HideAll(d) end
-        for Player, hl in pairs(ESP_Highlights) do pcall(function() hl.Enabled = false end) end
-    end
+        for Player, hl in pairs(ESP_Highlights) do            pcall(function() hl.Enabled = false end)        end    end
 
     local function ESP_Update()
         local Camera = Workspace.CurrentCamera
@@ -383,36 +417,46 @@ do
             local Char = Player.Character
             if not Char or not Char.Parent then
                 if not chamsOnly then ESP_HideAll(d) end
-                if ESP_Highlights[Player] then pcall(function() ESP_Highlights[Player]:Destroy() end); ESP_Highlights[Player] = nil end
-                continue
-            end
+                if ESP_Highlights[Player] then
+                    pcall(function() ESP_Highlights[Player]:Destroy() end); ESP_Highlights[Player] = nil
+                end
+            else
             local Hum = Char:FindFirstChild("Humanoid")
             local Root = Char:FindFirstChild("HumanoidRootPart")
             if not Hum or not Root then
                 if not chamsOnly then ESP_HideAll(d) end
-                if ESP_Highlights[Player] then ESP_Highlights[Player].Enabled = false end
-                continue
-            end
+                if ESP_Highlights[Player] then
+                    ESP_Highlights[Player].Enabled = false
+                end
+            else
             local isDead = (Hum.Health <= 0) and (not Char:FindFirstChild("BodyEffects") or not Char.BodyEffects:FindFirstChild("Knocked") or not Char.BodyEffects.Knocked.Value)
             if isDead then
                 if not chamsOnly then ESP_HideAll(d) end
-                if ESP_Highlights[Player] then pcall(function() ESP_Highlights[Player]:Destroy() end); ESP_Highlights[Player] = nil end
-                continue
-            end
+                if ESP_Highlights[Player] then
+                    pcall(function() ESP_Highlights[Player]:Destroy() end); ESP_Highlights[Player] = nil
+                end
+            else
             local dist = (camPos - Root.Position).Magnitude
             if dist > P.ESP_MaxDist then
                 if not chamsOnly then ESP_HideAll(d) end
-                if ESP_Highlights[Player] then ESP_Highlights[Player].Enabled = false end
-                continue
-            end
+                if ESP_Highlights[Player] then
+                    ESP_Highlights[Player].Enabled = false
+                end
+            else
             local rPos, onScr = Camera:WorldToViewportPoint(Root.Position)
             if not onScr then
                 if not chamsOnly then ESP_HideAll(d) end
-                if ESP_Highlights[Player] then ESP_Highlights[Player].Enabled = false end
-                continue
-            end
+                if ESP_Highlights[Player] then
+                    ESP_Highlights[Player].Enabled = false
+                end
+            else
             local Head = Char:FindFirstChild("Head")
-            local hPos = Head and Camera:WorldToViewportPoint(Head.Position + Vector3.new(0,0.5,0)) or Camera:WorldToViewportPoint(Root.Position + Vector3.new(0,2,0))
+            local hPos
+            if Head then
+                hPos = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0,0.5,0))
+            else
+                hPos = Camera:WorldToViewportPoint(Root.Position + Vector3.new(0,2,0))
+            end
             local lPos = Camera:WorldToViewportPoint(Root.Position - Vector3.new(0,3,0))
             local h = math.abs(hPos.Y - lPos.Y)
             local w = h / 2
@@ -429,9 +473,16 @@ do
                 d.Dist.Color = P.ESP_DistColor; d.Dist.Visible = true
             else d.Dist.Visible = false end
             if P.ESP_Health then
-                local maxHp = Hum.MaxHealth > 0 and Hum.MaxHealth or 100
+                local maxHp
+                if Hum.MaxHealth > 0 then
+                    maxHp = Hum.MaxHealth
+                else
+                    maxHp = 100
+                end
                 local rawHp = Hum.Health
-                if rawHp <= 0 then rawHp = maxHp end
+                if rawHp <= 0 then
+                    rawHp = maxHp
+                end
                 local hs = math.clamp(rawHp / maxHp, 0, 1)
                 d.HpBg.Size = Vector2.new(4, h); d.HpBg.Position = Vector2.new(rPos.X - w/2 - 6, hPos.Y); d.HpBg.Visible = true
                 d.Hp.Size = Vector2.new(2, h * hs); d.Hp.Position = Vector2.new(rPos.X - w/2 - 5, hPos.Y + h * (1 - hs))
@@ -447,11 +498,20 @@ do
             local ToolItem = Char:FindFirstChildOfClass("Tool")
             if P.ESP_Tool and ToolItem then
                 d.Tool.Text = ToolItem.Name
-                d.Tool.Position = Vector2.new(rPos.X, lPos.Y + (P.ESP_Distance and 20 or 5))
+                local _tool_y_offset
+                if P.ESP_Distance then
+                    _tool_y_offset = 20 else _tool_y_offset = 5
+                end
+                d.Tool.Position = Vector2.new(rPos.X, lPos.Y + _tool_y_offset)
                 d.Tool.Color = P.ESP_ToolColor; d.Tool.Visible = true
             else d.Tool.Visible = false end
             if P.ESP_Skeleton then
-                local bones = Char:FindFirstChild("UpperTorso") and boneR15 or boneR6
+                local bones
+                if Char:FindFirstChild("UpperTorso") then
+                    bones = boneR15
+                else
+                    bones = boneR6
+                end
                 local boneCount = #bones
                 for i = 1, boneCount do
                     local ln = d.Skeleton[i]; local pair = bones[i]
@@ -475,7 +535,9 @@ do
                 if not ESP_Highlights[Player] then
                     local hl = Instance.new("Highlight"); hl.Adornee = Char; hl.FillTransparency = 0.5; hl.OutlineTransparency = 0
                     pcall(function() hl.Parent = game:GetService("CoreGui") end)
-                    if not hl.Parent then hl.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+                    if not hl.Parent then
+                        hl.Parent = LocalPlayer:WaitForChild("PlayerGui")
+                    end
                     ESP_Highlights[Player] = hl
                 end
                 if ESP_Highlights[Player].Adornee ~= Char then
@@ -485,12 +547,19 @@ do
                 ESP_Highlights[Player].OutlineColor = P.ESP_ChamsOutline
                 ESP_Highlights[Player].Enabled = true
             else
-                if ESP_Highlights[Player] then ESP_Highlights[Player].Enabled = false end
+                if ESP_Highlights[Player] then
+                    ESP_Highlights[Player].Enabled = false
+                end
+            end
+            end
+            end
+            end
             end
         end
     end
 
-    for _, plr in ipairs(Players:GetPlayers()) do
+    local _iter_plr = Players:GetPlayers()
+    for _, plr in ipairs(_iter_plr) do
         if plr ~= LocalPlayer then ESP_Create(plr) end
     end
     Players.PlayerAdded:Connect(function(plr) ESP_Create(plr) end)
@@ -503,7 +572,6 @@ do
     end)
 end
 
--- ── Block 4: Noclip + Speedhack + JumpDelay ─────
 do
     local Noclip_Enabled = false
     local Noclip_Connection = nil
@@ -514,9 +582,12 @@ do
         Noclip_Enabled = true
         local char = LocalPlayer.Character
         if char then
-            for _, part in pairs(char:GetDescendants()) do
+            local _iter_part = char:GetDescendants()
+            for _, part in pairs(_iter_part) do
                 if part:IsA("BasePart") then
-                    if part.CanCollide then originalCollisions[part] = true; part.CanCollide = false end
+                    if part.CanCollide then
+                        originalCollisions[part] = true; part.CanCollide = false
+                    end
                 end
             end
         end
@@ -525,8 +596,11 @@ do
                 if not Noclip_Enabled then return end
                 local char = LocalPlayer.Character
                 if char then
-                    for _, part in pairs(char:GetDescendants()) do
-                        if part:IsA("BasePart") then part.CanCollide = false end
+                    local _iter_part = char:GetDescendants()
+                    for _, part in pairs(_iter_part) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
                     end
                 end
             end)
@@ -536,19 +610,23 @@ do
     Noclip_Disable = function()
         if not Noclip_Enabled then return end
         Noclip_Enabled = false
-        if Noclip_Connection then Noclip_Connection:Disconnect(); Noclip_Connection = nil end
+        if Noclip_Connection then
+            Noclip_Connection:Disconnect(); Noclip_Connection = nil
+        end
         local char = LocalPlayer.Character
         if char then
-            for _, part in pairs(char:GetDescendants()) do
+            local _iter_part = char:GetDescendants()
+            for _, part in pairs(_iter_part) do
                 if part:IsA("BasePart") then
-                    if originalCollisions[part] then part.CanCollide = true end
+                    if originalCollisions[part] then
+                        part.CanCollide = true
+                    end
                 end
             end
         end
         originalCollisions = {}
     end
 
-    -- Speedhack
     local SpeedHack_Enabled = false
     local SpeedHack_Connection = nil
 
@@ -572,10 +650,11 @@ do
     SpeedHack_Disable = function()
         if not SpeedHack_Enabled then return end
         SpeedHack_Enabled = false
-        if SpeedHack_Connection then SpeedHack_Connection:Disconnect(); SpeedHack_Connection = nil end
+        if SpeedHack_Connection then
+            SpeedHack_Connection:Disconnect(); SpeedHack_Connection = nil
+        end
     end
 
-    -- Jump Delay
     JumpDelay_Set = function(val)
         P.JumpDelay_Value = val
         pcall(function()
@@ -587,9 +666,7 @@ do
     end
 end
 
--- ── Block 5: FastInteract + FOV + Fullbright + AntiAFK ──
 do
-    -- Fast Interact
     local FastInteract_Enabled = false
     local FastInteract_Connection = nil
     local FastInteract_PPConnection = nil
@@ -598,27 +675,38 @@ do
         if FastInteract_Enabled then return end
         FastInteract_Enabled = true
         local function bypassPrompts()
-            for _, v in pairs(Workspace:GetDescendants()) do
-                if v:IsA("ProximityPrompt") then v.HoldDuration = 0 end
+            local _iter_v = Workspace:GetDescendants()
+            for _, v in pairs(_iter_v) do
+                if v:IsA("ProximityPrompt") then
+                    v.HoldDuration = 0
+                end
             end
         end
         bypassPrompts()
-        FastInteract_PPConnection = game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(v)
-            if FastInteract_Enabled then v.HoldDuration = 0 end
+        local _ppService = game:GetService("ProximityPromptService")
+        FastInteract_PPConnection = _ppService.PromptButtonHoldBegan:Connect(function(v)
+            if FastInteract_Enabled then
+                v.HoldDuration = 0
+            end
         end)
         FastInteract_Connection = Workspace.DescendantAdded:Connect(function(v)
-            if FastInteract_Enabled and v:IsA("ProximityPrompt") then v.HoldDuration = 0 end
+            if FastInteract_Enabled and v:IsA("ProximityPrompt") then
+                v.HoldDuration = 0
+            end
         end)
     end
 
     FastInteract_Disable = function()
         if not FastInteract_Enabled then return end
         FastInteract_Enabled = false
-        if FastInteract_PPConnection then FastInteract_PPConnection:Disconnect(); FastInteract_PPConnection = nil end
-        if FastInteract_Connection then FastInteract_Connection:Disconnect(); FastInteract_Connection = nil end
+        if FastInteract_PPConnection then
+            FastInteract_PPConnection:Disconnect(); FastInteract_PPConnection = nil
+        end
+        if FastInteract_Connection then
+            FastInteract_Connection:Disconnect(); FastInteract_Connection = nil
+        end
     end
 
-    -- FOV
     local Fov_Enabled = false
     local Fov_Connection = nil
     local Fov_Original = 70
@@ -630,7 +718,9 @@ do
         Workspace.CurrentCamera.FieldOfView = P.Fov_Value
         if not Fov_Connection then
             Fov_Connection = RunService.RenderStepped:Connect(function()
-                if Fov_Enabled then Workspace.CurrentCamera.FieldOfView = P.Fov_Value end
+                if Fov_Enabled then
+                    Workspace.CurrentCamera.FieldOfView = P.Fov_Value
+                end
             end)
         end
     end
@@ -639,15 +729,18 @@ do
         if not Fov_Enabled then return end
         Fov_Enabled = false
         Workspace.CurrentCamera.FieldOfView = Fov_Original
-        if Fov_Connection then Fov_Connection:Disconnect(); Fov_Connection = nil end
+        if Fov_Connection then
+            Fov_Connection:Disconnect(); Fov_Connection = nil
+        end
     end
 
     _G.Pidors_Fov_SetValue = function(v)
         P.Fov_Value = v
-        if Fov_Enabled then Workspace.CurrentCamera.FieldOfView = v end
+        if Fov_Enabled then
+            Workspace.CurrentCamera.FieldOfView = v
+        end
     end
 
-    -- Fullbright
     local FullBright_Enabled = false
     local FullBright_Connection = nil
     local OriginalLighting = {
@@ -664,27 +757,42 @@ do
         Lighting.ColorShift_Top = Color3.new(0, 0, 0); Lighting.FogStart = 100000; Lighting.FogEnd = 100000
         FullBright_Connection = RunService.RenderStepped:Connect(function()
             if not FullBright_Enabled then return end
-            if Lighting.Brightness ~= 5 then Lighting.Brightness = 5 end
-            if Lighting.ClockTime ~= 14 then Lighting.ClockTime = 14 end
-            if Lighting.Ambient ~= Color3.new(1, 1, 1) then Lighting.Ambient = Color3.new(1, 1, 1) end
-            if Lighting.OutdoorAmbient ~= Color3.new(1, 1, 1) then Lighting.OutdoorAmbient = Color3.new(1, 1, 1) end
-            if Lighting.ColorShift_Top ~= Color3.new(0, 0, 0) then Lighting.ColorShift_Top = Color3.new(0, 0, 0) end
-            if Lighting.FogStart ~= 100000 then Lighting.FogStart = 100000 end
-            if Lighting.FogEnd ~= 100000 then Lighting.FogEnd = 100000 end
+            if Lighting.Brightness ~= 5 then
+                Lighting.Brightness = 5
+            end
+            if Lighting.ClockTime ~= 14 then
+                Lighting.ClockTime = 14
+            end
+            if Lighting.Ambient ~= Color3.new(1, 1, 1) then
+                Lighting.Ambient = Color3.new(1, 1, 1)
+            end
+            if Lighting.OutdoorAmbient ~= Color3.new(1, 1, 1) then
+                Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            end
+            if Lighting.ColorShift_Top ~= Color3.new(0, 0, 0) then
+                Lighting.ColorShift_Top = Color3.new(0, 0, 0)
+            end
+            if Lighting.FogStart ~= 100000 then
+                Lighting.FogStart = 100000
+            end
+            if Lighting.FogEnd ~= 100000 then
+                Lighting.FogEnd = 100000
+            end
         end)
     end
 
     FullBright_Disable = function()
         if not FullBright_Enabled then return end
         FullBright_Enabled = false
-        if FullBright_Connection then FullBright_Connection:Disconnect(); FullBright_Connection = nil end
+        if FullBright_Connection then
+            FullBright_Connection:Disconnect(); FullBright_Connection = nil
+        end
         Lighting.Brightness = OriginalLighting.Brightness; Lighting.ClockTime = OriginalLighting.ClockTime
         Lighting.Ambient = OriginalLighting.Ambient; Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
         Lighting.ColorShift_Top = OriginalLighting.ColorShift_Top
         Lighting.FogStart = OriginalLighting.FogStart; Lighting.FogEnd = OriginalLighting.FogEnd
     end
 
-    -- AntiAFK
     local AntiAFK_Enabled = false
     local AntiAFK_Connection = nil
 
@@ -693,20 +801,19 @@ do
         AntiAFK_Enabled = true
         local VirtualUser = game:GetService("VirtualUser")
         AntiAFK_Connection = LocalPlayer.Idled:Connect(function()
-            if AntiAFK_Enabled then VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end
-        end)
+            if AntiAFK_Enabled then                VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new())            end        end)
     end
 
     AntiAFK_Disable = function()
         if not AntiAFK_Enabled then return end
         AntiAFK_Enabled = false
-        if AntiAFK_Connection then AntiAFK_Connection:Disconnect(); AntiAFK_Connection = nil end
+        if AntiAFK_Connection then
+            AntiAFK_Connection:Disconnect(); AntiAFK_Connection = nil
+        end
     end
 end
 
--- ── Block 6: Lockpick + Doors + Money ───────────
 do
-    -- No Fail Lockpick
     local NoFailLockpick_Enabled = false
     local lockpickAddedConnection = nil
 
@@ -726,9 +833,15 @@ do
                 local b1 = frames:WaitForChild("B1", 10)
                 local b2 = frames:WaitForChild("B2", 10)
                 local b3 = frames:WaitForChild("B3", 10)
-                if b1 and b1:FindFirstChild("Bar") and b1.Bar:FindFirstChild("UIScale") then b1.Bar.UIScale.Scale = 10 end
-                if b2 and b2:FindFirstChild("Bar") and b2.Bar:FindFirstChild("UIScale") then b2.Bar.UIScale.Scale = 10 end
-                if b3 and b3:FindFirstChild("Bar") and b3.Bar:FindFirstChild("UIScale") then b3.Bar.UIScale.Scale = 10 end
+                if b1 and b1:FindFirstChild("Bar") and b1.Bar:FindFirstChild("UIScale") then
+                    b1.Bar.UIScale.Scale = 10
+                end
+                if b2 and b2:FindFirstChild("Bar") and b2.Bar:FindFirstChild("UIScale") then
+                    b2.Bar.UIScale.Scale = 10
+                end
+                if b3 and b3:FindFirstChild("Bar") and b3.Bar:FindFirstChild("UIScale") then
+                    b3.Bar.UIScale.Scale = 10
+                end
             end
         end)
     end
@@ -736,7 +849,9 @@ do
     NoFailLockpick_Disable = function()
         if not NoFailLockpick_Enabled then return end
         NoFailLockpick_Enabled = false
-        if lockpickAddedConnection then lockpickAddedConnection:Disconnect(); lockpickAddedConnection = nil end
+        if lockpickAddedConnection then
+            lockpickAddedConnection:Disconnect(); lockpickAddedConnection = nil
+        end
         local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not PlayerGui then return end
         local lockpickGui = PlayerGui:FindFirstChild("LockpickGUI")
@@ -747,16 +862,21 @@ do
                 if lpFrame then
                     local bars = lpFrame:FindFirstChild("Frames")
                     if bars then
-                        if bars:FindFirstChild("B1") and bars.B1:FindFirstChild("Bar") and bars.B1.Bar:FindFirstChild("UIScale") then bars.B1.Bar.UIScale.Scale = 1 end
-                        if bars:FindFirstChild("B2") and bars.B2:FindFirstChild("Bar") and bars.B2.Bar:FindFirstChild("UIScale") then bars.B2.Bar.UIScale.Scale = 1 end
-                        if bars:FindFirstChild("B3") and bars.B3:FindFirstChild("Bar") and bars.B3.Bar:FindFirstChild("UIScale") then bars.B3.Bar.UIScale.Scale = 1 end
+                        if bars:FindFirstChild("B1") and bars.B1:FindFirstChild("Bar") and bars.B1.Bar:FindFirstChild("UIScale") then
+                            bars.B1.Bar.UIScale.Scale = 1
+                        end
+                        if bars:FindFirstChild("B2") and bars.B2:FindFirstChild("Bar") and bars.B2.Bar:FindFirstChild("UIScale") then
+                            bars.B2.Bar.UIScale.Scale = 1
+                        end
+                        if bars:FindFirstChild("B3") and bars.B3:FindFirstChild("Bar") and bars.B3.Bar:FindFirstChild("UIScale") then
+                            bars.B3.Bar.UIScale.Scale = 1
+                        end
                     end
                 end
             end
         end
     end
 
-    -- Auto Open / Unlock Doors
     local OpenNearbyDoors_Enabled = false
     local UnlockNearbyDoors_Enabled = false
     local DoorCoroutine = nil
@@ -766,18 +886,22 @@ do
             local char = LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if not hrp or not hum or hum.Health <= 0 then task.wait(0.5); continue end
+            if not hrp or not hum or hum.Health <= 0 then task.wait(0.5)
+            else
             local doorsFolder = Workspace.Map:FindFirstChild("Doors")
-            if not doorsFolder then OpenNearbyDoors_Enabled = false; UnlockNearbyDoors_Enabled = false; break end
+            if not doorsFolder then
+                OpenNearbyDoors_Enabled = false; UnlockNearbyDoors_Enabled = false; break
+            end
             local playerPos = hrp.Position
-            for _, doorInstance in ipairs(doorsFolder:GetChildren()) do
+            local _iter_doorInstance = doorsFolder:GetChildren()
+            for _, doorInstance in ipairs(_iter_doorInstance) do
                 local doorBase = doorInstance:FindFirstChild("DoorBase")
                 local valuesFolder = doorInstance:FindFirstChild("Values")
                 local eventsFolder = doorInstance:FindFirstChild("Events")
                 if doorBase and valuesFolder and eventsFolder then
                     if (playerPos - doorBase.Position).Magnitude <= 6 then
                         local toggleEvent = eventsFolder:FindFirstChild("Toggle")
-                        if not toggleEvent then continue end
+                        if toggleEvent then
                         if UnlockNearbyDoors_Enabled then
                             local lockedValue = valuesFolder:FindFirstChild("Locked")
                             local lockArgument = doorInstance:FindFirstChild("Lock")
@@ -795,10 +919,12 @@ do
                                 end
                             end
                         end
+                        end
                     end
                 end
             end
             task.wait(0.25)
+            end
         end
         DoorCoroutine = nil
     end
@@ -826,7 +952,6 @@ do
         UnlockNearbyDoors_Enabled = false; StartDoorLoop()
     end
 
-    -- Auto Pickup Money
     local AutoPickupMoney_Enabled = false
     local AutoPickupMoney_Connection = nil
     local AutoPickupMoney_Coroutine = nil
@@ -836,7 +961,9 @@ do
         local remoteEvent = ReplicatedStorage.Events:FindFirstChild("CZDPZUS")
         if not cashFolder or not remoteEvent then
             AutoPickupMoney_Enabled = false
-            if AutoPickupMoney_Connection then AutoPickupMoney_Connection:Disconnect(); AutoPickupMoney_Connection = nil end
+            if AutoPickupMoney_Connection then
+                AutoPickupMoney_Connection:Disconnect(); AutoPickupMoney_Connection = nil
+            end
             return
         end
         AutoPickupMoney_Connection = RunService.RenderStepped:Connect(function()
@@ -847,7 +974,8 @@ do
             if not hrp then return end
             if CoolDowns.AutoPickUps.MoneyCooldown then return end
             local rootPosition = hrp.Position
-            for _, v in ipairs(cashFolder:GetChildren()) do
+            local _iter_v = cashFolder:GetChildren()
+            for _, v in ipairs(_iter_v) do
                 if (rootPosition - v.Position).Magnitude < 5 then
                     if not CoolDowns.AutoPickUps.MoneyCooldown then
                         CoolDowns.AutoPickUps.MoneyCooldown = true
@@ -864,8 +992,12 @@ do
     AutoPickupMoney_Enable = function()
         if AutoPickupMoney_Enabled then return end
         AutoPickupMoney_Enabled = true
-        if AutoPickupMoney_Connection then AutoPickupMoney_Connection:Disconnect(); AutoPickupMoney_Connection = nil end
-        if AutoPickupMoney_Coroutine then pcall(coroutine.close, AutoPickupMoney_Coroutine); AutoPickupMoney_Coroutine = nil end
+        if AutoPickupMoney_Connection then
+            AutoPickupMoney_Connection:Disconnect(); AutoPickupMoney_Connection = nil
+        end
+        if AutoPickupMoney_Coroutine then
+            pcall(coroutine.close, AutoPickupMoney_Coroutine); AutoPickupMoney_Coroutine = nil
+        end
         AutoPickupMoney_Coroutine = coroutine.create(AutoPickupMoney_Logic)
         coroutine.resume(AutoPickupMoney_Coroutine)
     end
@@ -873,13 +1005,18 @@ do
     AutoPickupMoney_Disable = function()
         if not AutoPickupMoney_Enabled then return end
         AutoPickupMoney_Enabled = false
-        if AutoPickupMoney_Connection then AutoPickupMoney_Connection:Disconnect(); AutoPickupMoney_Connection = nil end
-        if AutoPickupMoney_Coroutine then pcall(coroutine.close, AutoPickupMoney_Coroutine); AutoPickupMoney_Coroutine = nil end
-        if CoolDowns and CoolDowns.AutoPickUps then CoolDowns.AutoPickUps.MoneyCooldown = false end
+        if AutoPickupMoney_Connection then
+            AutoPickupMoney_Connection:Disconnect(); AutoPickupMoney_Connection = nil
+        end
+        if AutoPickupMoney_Coroutine then
+            pcall(coroutine.close, AutoPickupMoney_Coroutine); AutoPickupMoney_Coroutine = nil
+        end
+        if CoolDowns and CoolDowns.AutoPickUps then
+            CoolDowns.AutoPickUps.MoneyCooldown = false
+        end
     end
 end
 
--- ── Block 7: Shadow/Invisible ────────────────────
 do
     local Shadow_Active = false
     local Shadow_Usable = true
@@ -895,7 +1032,9 @@ do
         local HUD = Instance.new("ScreenGui")
         HUD.Name = "ShadowWarningHUD"; HUD.ResetOnSpawn = false; HUD.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         pcall(function() HUD.Parent = cloneref(game:GetService("CoreGui")) end)
-        if not HUD.Parent then HUD.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+        if not HUD.Parent then
+            HUD.Parent = LocalPlayer:WaitForChild("PlayerGui")
+        end
         Shadow_WarningText = Instance.new("TextLabel", HUD)
         Shadow_WarningText.Text = "You are visible"
         Shadow_WarningText.Visible = false; Shadow_WarningText.Size = UDim2.new(0, 200, 0, 30)
@@ -916,7 +1055,9 @@ do
     end
 
     local function Shadow_CacheAnimTrack()
-        if Shadow_AnimTrack then pcall(function() Shadow_AnimTrack:Stop() end); Shadow_AnimTrack = nil end
+        if Shadow_AnimTrack then
+            pcall(function() Shadow_AnimTrack:Stop() end); Shadow_AnimTrack = nil
+        end
         if Shadow_HMND then
             local success, result = pcall(function() return Shadow_HMND:LoadAnimation(Shadow_CamoAnim) end)
             if success then Shadow_AnimTrack = result; Shadow_AnimTrack.Priority = Enum.AnimationPriority.Action4
@@ -927,22 +1068,27 @@ do
     Shadow_Disable = function()
         if not Shadow_Active then return end
         Shadow_Active = false
-        if Shadow_AnimTrack then pcall(function() Shadow_AnimTrack:Stop() end) end
-        if Shadow_HMND then Workspace.CurrentCamera.CameraSubject = Shadow_HMND end
+        if Shadow_AnimTrack then            pcall(function() Shadow_AnimTrack:Stop() end)        end        if Shadow_HMND then
+            Workspace.CurrentCamera.CameraSubject = Shadow_HMND
+        end
         if Shadow_Char then
-            for _, v in pairs(Shadow_Char:GetDescendants()) do
-                if v:IsA("BasePart") and v.Transparency == 0.5 then v.Transparency = 0 end
+            local _iter_v = Shadow_Char:GetDescendants()
+            for _, v in pairs(_iter_v) do
+                if v:IsA("BasePart") and v.Transparency == 0.5 then
+                    v.Transparency = 0
+                end
             end
         end
-        if Shadow_WarningText then Shadow_WarningText.Visible = false end
+        if Shadow_WarningText then
+            Shadow_WarningText.Visible = false
+        end
     end
 
     Shadow_Enable = function()
         if Shadow_Active or not Shadow_Usable then return end
         Shadow_RefreshCharRefs()
         if not Shadow_Char or not Shadow_HMND or not Shadow_HRP then return end
-        if not Shadow_Char:FindFirstChild("Torso") then Library:Notify("Invisible: R6 Avatar required!", 3); return end
-        Shadow_Active = true
+        if not Shadow_Char:FindFirstChild("Torso") then            Library:Notify("Invisible: R6 Avatar required!", 3); return        end        Shadow_Active = true
         Workspace.CurrentCamera.CameraSubject = Shadow_HRP
         Shadow_CacheAnimTrack()
     end
@@ -951,7 +1097,9 @@ do
         if not Shadow_Char or not Shadow_HMND or not Shadow_HRP or not Shadow_HMND:IsDescendantOf(Workspace) or Shadow_HMND.Health <= 0 then
             if Shadow_WarningText then Shadow_WarningText.Visible = false end; return
         end
-        if Shadow_WarningText then Shadow_WarningText.Visible = not Shadow_CheckGrounded() end
+        if Shadow_WarningText then
+            Shadow_WarningText.Visible = not Shadow_CheckGrounded()
+        end
         local walk_speed = 12
         if Shadow_HMND.MoveDirection.Magnitude > 0 then
             Shadow_HRP.CFrame = Shadow_HRP.CFrame + Shadow_HMND.MoveDirection * walk_speed * deltaTime
@@ -969,17 +1117,25 @@ do
             end)
         elseif Shadow_HMND and Shadow_HMND.Health > 0 then Shadow_CacheAnimTrack() end
         RunService.RenderStepped:Wait()
-        if Shadow_HMND and Shadow_HMND:IsDescendantOf(Workspace) then Shadow_HMND.CameraOffset = InitialCamOffset end
-        if Shadow_HRP and Shadow_HRP:IsDescendantOf(Workspace) then Shadow_HRP.CFrame = InitialCFrame end
-        if Shadow_AnimTrack then pcall(function() Shadow_AnimTrack:Stop() end) end
+        if Shadow_HMND and Shadow_HMND:IsDescendantOf(Workspace) then
+            Shadow_HMND.CameraOffset = InitialCamOffset
+        end
         if Shadow_HRP and Shadow_HRP:IsDescendantOf(Workspace) then
+            Shadow_HRP.CFrame = InitialCFrame
+        end
+        if Shadow_AnimTrack then            pcall(function() Shadow_AnimTrack:Stop() end)        end        if Shadow_HRP and Shadow_HRP:IsDescendantOf(Workspace) then
             local LookVec = Workspace.CurrentCamera.CFrame.LookVector
             local FlatLook = Vector3.new(LookVec.X, 0, LookVec.Z).Unit
-            if FlatLook.Magnitude > 0.1 then Shadow_HRP.CFrame = CFrame.new(Shadow_HRP.Position, Shadow_HRP.Position + FlatLook) end
+            if FlatLook.Magnitude > 0.1 then
+                Shadow_HRP.CFrame = CFrame.new(Shadow_HRP.Position, Shadow_HRP.Position + FlatLook)
+            end
         end
         if Shadow_Char then
-            for _, v in pairs(Shadow_Char:GetDescendants()) do
-                if v:IsA("BasePart") and v.Transparency ~= 1 then v.Transparency = 0.5 end
+            local _iter_v = Shadow_Char:GetDescendants()
+            for _, v in pairs(_iter_v) do
+                if v:IsA("BasePart") and v.Transparency ~= 1 then
+                    v.Transparency = 0.5
+                end
             end
         end
     end
@@ -987,11 +1143,16 @@ do
     RunService.Heartbeat:Connect(function(deltaTime)
         if not Shadow_Active or not Shadow_Usable then
             if not Shadow_Active and Shadow_Char then
-                for _, v in pairs(Shadow_Char:GetDescendants()) do
-                    if v:IsA("BasePart") and v.Transparency == 0.5 then v.Transparency = 0 end
+                local _iter_v = Shadow_Char:GetDescendants()
+                for _, v in pairs(_iter_v) do
+                    if v:IsA("BasePart") and v.Transparency == 0.5 then
+                        v.Transparency = 0
+                    end
                 end
             end
-            if Shadow_WarningText then Shadow_WarningText.Visible = false end
+            if Shadow_WarningText then
+                Shadow_WarningText.Visible = false
+            end
             return
         end
         ShadowStep(deltaTime)
@@ -999,7 +1160,9 @@ do
 
     LocalPlayer.CharacterAdded:Connect(function()
         if Shadow_Active then Shadow_Disable() end
-        if Shadow_AnimTrack then pcall(function() Shadow_AnimTrack:Stop() end); Shadow_AnimTrack = nil end
+        if Shadow_AnimTrack then
+            pcall(function() Shadow_AnimTrack:Stop() end); Shadow_AnimTrack = nil
+        end
         task.wait(); Shadow_RefreshCharRefs()
         if Shadow_HMND then
             if Shadow_HMND.RigType ~= Enum.HumanoidRigType.R6 then Shadow_Usable = false; Library:Notify("Invisible: Non-R6 Avatar detected!", 3)
@@ -1008,17 +1171,21 @@ do
     end)
 
     LocalPlayer.CharacterRemoving:Connect(function()
-        if Shadow_AnimTrack then pcall(function() Shadow_AnimTrack:Stop() end); Shadow_AnimTrack = nil end
-        if Shadow_WarningText then Shadow_WarningText.Visible = false end
+        if Shadow_AnimTrack then
+            pcall(function() Shadow_AnimTrack:Stop() end); Shadow_AnimTrack = nil
+        end
+        if Shadow_WarningText then
+            Shadow_WarningText.Visible = false
+        end
     end)
 
     Shadow_RefreshCharRefs()
-    if Shadow_Char and not Shadow_Char:FindFirstChild("Torso") then Shadow_Usable = false end
+    if Shadow_Char and not Shadow_Char:FindFirstChild("Torso") then
+        Shadow_Usable = false
+    end
 end
 
--- ── Block 8: AdminCheck + MeleeAura + MeleeUp ──
 do
-    -- Admin Check
     local AdminCheck_Enabled = false
     local AdminCheck_Connection = nil
 
@@ -1051,7 +1218,8 @@ do
     local function hasTracker(player)
         if not player or not player:IsA("Player") then return false, nil end
         for i = 1, #player:GetChildren() do
-            local child = player:GetChildren()[i]
+            local _children = player:GetChildren()
+            local child = _children[i]
             if typeof(child.Name) == "string" and string.sub(child.Name, -8) == "Tracker$" then
                 local trackedPlayerName = string.sub(child.Name, 1, -9)
                 if Players:FindFirstChild(trackedPlayerName) then return true, trackedPlayerName end
@@ -1089,13 +1257,16 @@ do
         AdminCheck_Enabled = true
         AdminCheck_Connection = Players.PlayerAdded:Connect(onPlayerJoining)
         task.spawn(function()
-            for _, player in ipairs(Players:GetPlayers()) do
+            local _iter_player = Players:GetPlayers()
+            for _, player in ipairs(_iter_player) do
                 if player ~= LocalPlayer then
                     local isPlayerStaff = isStaff(player)
                     local hasTrackers = hasTracker(player)
                     if isPlayerStaff or hasTrackers then
                         AdminCheck_Enabled = false
-                        if AdminCheck_Connection then AdminCheck_Connection:Disconnect(); AdminCheck_Connection = nil end
+                        if AdminCheck_Connection then
+                            AdminCheck_Connection:Disconnect(); AdminCheck_Connection = nil
+                        end
                         LocalPlayer:Kick("Staff detected: " .. player.Name)
                         return
                     end
@@ -1107,10 +1278,11 @@ do
     AdminCheck_Disable = function()
         if not AdminCheck_Enabled then return end
         AdminCheck_Enabled = false
-        if AdminCheck_Connection then AdminCheck_Connection:Disconnect(); AdminCheck_Connection = nil end
+        if AdminCheck_Connection then
+            AdminCheck_Connection:Disconnect(); AdminCheck_Connection = nil
+        end
     end
 
-    -- Melee Aura
     local MeleeAura_Enabled = false
     local MeleeAura_Connection = nil
 
@@ -1133,7 +1305,13 @@ do
             local success1, result = pcall(function() return remote1:InvokeServer(unpack(arg1)) end)
             if not success1 then return end
             task.wait(0.1)
-            local Handle = tool and (tool:FindFirstChild("WeaponHandle") or tool:FindFirstChild("Handle")) or (char and char:FindFirstChild("Right Arm"))
+            local Handle
+            if tool then
+                Handle = tool:FindFirstChild("WeaponHandle") or tool:FindFirstChild("Handle")
+            end
+            if not Handle and char then
+                Handle = char:FindFirstChild("Right Arm")
+            end
             local head = target:FindFirstChild("Head")
             if Handle and head and hrp then
                 local arg2 = { [1] = "\xF0\x9F\x8D\x9E", [2] = tick(), [3] = tool, [4] = "2389ZFX34", [5] = result, [6] = false, [7] = Handle, [8] = head, [9] = target, [10] = hrp.Position, [11] = head.Position }
@@ -1146,7 +1324,8 @@ do
             local char = me.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
-                for _, plr in ipairs(Players:GetPlayers()) do
+                local _iter_plr = Players:GetPlayers()
+                for _, plr in ipairs(_iter_plr) do
                     if plr ~= me then
                         local c = plr.Character
                         local hrp2 = c and c:FindFirstChild("HumanoidRootPart")
@@ -1171,10 +1350,11 @@ do
     MeleeAura_Disable = function()
         if not MeleeAura_Enabled then return end
         MeleeAura_Enabled = false
-        if MeleeAura_Connection and MeleeAura_Connection.Connected then MeleeAura_Connection:Disconnect(); MeleeAura_Connection = nil end
+        if MeleeAura_Connection and MeleeAura_Connection.Connected then
+            MeleeAura_Connection:Disconnect(); MeleeAura_Connection = nil
+        end
     end
 
-    -- Melee Aura Upgraded
     local MeleeUp_Enabled = false
     local MeleeUp_Connection = nil
     local MeleeUp_Tick = tick()
@@ -1196,25 +1376,32 @@ do
         if MeleeUp_Enabled and MeleeUp_CD[TOOL.Name] then
             local attachcd = MeleeUp_CD[TOOL.Name] or 0.5
             if tick() - MeleeUp_Tick >= attachcd then
-                for _, p in ipairs(Players:GetPlayers()) do
+                local _iter_p = Players:GetPlayers()
+                for _, p in ipairs(_iter_p) do
                     if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                         local dist = (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
                         if dist < P.MeleeUp_Distance and p.Character:FindFirstChildOfClass("Humanoid").Health > 0 and not p.Character:FindFirstChildOfClass("ForceField") then
                             local targetPart = p.Character:FindFirstChild(P.MeleeUp_TargetPart) or p.Character:FindFirstChild("Right Arm")
-                            if not targetPart then continue end
+                            if not targetPart then
+                                -- skip
+                            end
+                            if targetPart then
                             local result = remote1:InvokeServer("\xF0\x9F\x8D\x9E", tick(), TOOL, "43TRFWX", "Normal", tick(), true)
                             if P.MeleeUp_AnimEnabled then
                                 local anim = TOOL:FindFirstChild("AnimsFolder") and TOOL.AnimsFolder:FindFirstChild("Slash1")
                                 if anim then
-                                    local animator = LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):FindFirstChild("Animator")
-                                    if animator then animator:LoadAnimation(anim):Play(0.1, 1, 1.3) end
+                                    local _charHumanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                                    local animator = _charHumanoid and _charHumanoid:FindFirstChild("Animator")
+                                    if animator then
+                                        local _animTrack = animator:LoadAnimation(anim)
+                                        _animTrack:Play(0.1, 1, 1.3)
+                                    end
                                 end
                             end
                             local Handle = TOOL:FindFirstChild("WeaponHandle") or TOOL:FindFirstChild("Handle") or LocalPlayer.Character:FindFirstChild("Left Arm")
                             local arg2 = {"\xF0\x9F\x8D\x9E", tick(), TOOL, "2389ZFX34", result, true, Handle, targetPart, p.Character, LocalPlayer.Character.HumanoidRootPart.Position, targetPart.Position}
                             if TOOL.Name == "Chainsaw" then
-                                for i = 1, 15 do remote2:FireServer(unpack(arg2)) end
-                            else
+                                for i = 1, 15 do                                    remote2:FireServer(unpack(arg2))                                end                            else
                                 remote2:FireServer(unpack(arg2))
                             end
                             MeleeUp_Tick = tick()
@@ -1239,13 +1426,13 @@ do
     MeleeUp_Disable = function()
         if not MeleeUp_Enabled then return end
         MeleeUp_Enabled = false
-        if MeleeUp_Connection then MeleeUp_Connection:Disconnect(); MeleeUp_Connection = nil end
+        if MeleeUp_Connection then
+            MeleeUp_Connection:Disconnect(); MeleeUp_Connection = nil
+        end
     end
 end
 
--- ── Block 9: NoRecoil + Pepper + Stamina + AutoFire + NoFallDamage ──
 do
-    -- NoRecoil
     local NoRecoil_Enabled = false
     local NoRecoil_Connections = {}
     local NoRecoil_OriginalValues = {}
@@ -1297,8 +1484,7 @@ do
             end)
         end
         NoRecoil_OriginalValues = {}; NoRecoil_WeaponCache = {}
-        for _, conn in ipairs(NoRecoil_Connections) do if conn.Connected then conn:Disconnect() end end
-        NoRecoil_Connections = {}
+        for _, conn in ipairs(NoRecoil_Connections) do            if conn.Connected then conn:Disconnect() end        end        NoRecoil_Connections = {}
     end
 
     NoRecoil_Enable = function()
@@ -1306,20 +1492,20 @@ do
         NoRecoil_Enabled = true
         doCache(); doApply()
         local function handleWeapon(child)
-            if child:IsA("Tool") and NoRecoil_Enabled then task.wait(0.1); doCache(); doApply() end
-        end
+            if child:IsA("Tool") and NoRecoil_Enabled then                task.wait(0.1); doCache(); doApply()            end        end
         table.insert(NoRecoil_Connections, LocalPlayer.CharacterAdded:Connect(function(character)
             task.wait(1)
-            for _, child in ipairs(character:GetChildren()) do if child:IsA("Tool") then handleWeapon(child) end end
-            table.insert(NoRecoil_Connections, character.ChildAdded:Connect(handleWeapon))
+            local _iter_child = character:GetChildren()
+            for _, child in ipairs(_iter_child) do
+                if child:IsA("Tool") then handleWeapon(child) end            end            table.insert(NoRecoil_Connections, character.ChildAdded:Connect(handleWeapon))
         end))
         if LocalPlayer.Character then
-            for _, child in ipairs(LocalPlayer.Character:GetChildren()) do if child:IsA("Tool") then handleWeapon(child) end end
-            table.insert(NoRecoil_Connections, LocalPlayer.Character.ChildAdded:Connect(handleWeapon))
+            local _iter_child = LocalPlayer.Character:GetChildren()
+            for _, child in ipairs(_iter_child) do
+                if child:IsA("Tool") then handleWeapon(child) end            end            table.insert(NoRecoil_Connections, LocalPlayer.Character.ChildAdded:Connect(handleWeapon))
         end
     end
 
-    -- Pepper
     local Pepper_InfEnabled = false
     local Pepper_AuraEnabled = false
     local Pepper_Connection = nil
@@ -1327,8 +1513,7 @@ do
     Pepper_StopSpray = function()
         pcall(function()
             local pepper = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Pepper-spray")
-            if pepper and pepper:FindFirstChild("RemoteEvent") then pepper.RemoteEvent:FireServer("Spray", false) end
-        end)
+            if pepper and pepper:FindFirstChild("RemoteEvent") then                pepper.RemoteEvent:FireServer("Spray", false)            end        end)
     end
 
     Pepper_StartLoop = function()
@@ -1336,13 +1521,17 @@ do
         local cooldown = 0
         Pepper_Connection = RunService.RenderStepped:Connect(function()
             if not Pepper_InfEnabled and not Pepper_AuraEnabled then
-                if Pepper_Connection then Pepper_Connection:Disconnect(); Pepper_Connection = nil end
+                if Pepper_Connection then
+                    Pepper_Connection:Disconnect(); Pepper_Connection = nil
+                end
                 return
             end
             if Pepper_InfEnabled then
                 pcall(function()
                     local pepper = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Pepper-spray")
-                    if pepper then local ammo = pepper:FindFirstChild("Ammo"); if ammo then ammo.Value = 100 end end
+                    if pepper then
+                        local ammo = pepper:FindFirstChild("Ammo"); if ammo then ammo.Value = 100 end
+                    end
                 end)
             end
             if Pepper_AuraEnabled then
@@ -1355,7 +1544,8 @@ do
                         local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
                         if myHRP then
                             local anyInRange = false
-                            for _, plr in ipairs(Players:GetPlayers()) do
+                            local _iter_plr = Players:GetPlayers()
+                            for _, plr in ipairs(_iter_plr) do
                                 if plr ~= LocalPlayer then
                                     local c = plr.Character
                                     local hrp2 = c and c:FindFirstChild("HumanoidRootPart")
@@ -1375,8 +1565,7 @@ do
                                     end
                                 end
                             end
-                            if not anyInRange then pepper.RemoteEvent:FireServer("Spray", false) end
-                            cooldown = now
+                            if not anyInRange then                                pepper.RemoteEvent:FireServer("Spray", false)                            end                            cooldown = now
                         end
                     end
                 end)
@@ -1384,7 +1573,6 @@ do
         end)
     end
 
-    -- Expose pepper toggles for GUI
     _G.Pidors_Pepper = function(inf, aura)
         Pepper_InfEnabled = inf
         Pepper_AuraEnabled = aura
@@ -1413,13 +1601,17 @@ do
                 if not loop_func_1 then
                     break
                 end
-                if type(upvalue) == "function" and debug.getinfo(upvalue).name == "Upt_S" and not staminaHook then
+                if type(upvalue) == "function" then
+                    local _info = debug.getinfo(upvalue)
+                    if _info.name == "Upt_S" and not staminaHook then
                     staminaHook = hookfunction(upvalue, function(...)
                         if isInfiniteStaminaEnabled then
-                            getupvalue(upvalue_table, 7).S = 100
+                            local _upt = getupvalue(upvalue_table, 7)
+                            _upt.S = 100
                         end
                         return staminaHook(...)
                     end)
+                    end
                 end
             end
         end)
@@ -1431,7 +1623,6 @@ do
         isInfiniteStaminaEnabled = false
     end
 
-    -- Auto Fire Mode
     local AutoFireMode_Enabled = false
     local AutoFireMode_Connections = {}
 
@@ -1452,27 +1643,26 @@ do
         AutoFireMode_Enabled = true
         ApplyAutoFireMode()
         local function handleWeapon(child)
-            if child:IsA("Tool") and AutoFireMode_Enabled then task.wait(0.1); ApplyAutoFireMode() end
-        end
+            if child:IsA("Tool") and AutoFireMode_Enabled then                task.wait(0.1); ApplyAutoFireMode()            end        end
         table.insert(AutoFireMode_Connections, LocalPlayer.CharacterAdded:Connect(function(character)
             task.wait(1)
-            for _, child in ipairs(character:GetChildren()) do if child:IsA("Tool") then handleWeapon(child) end end
-            table.insert(AutoFireMode_Connections, character.ChildAdded:Connect(handleWeapon))
+            local _iter_child = character:GetChildren()
+            for _, child in ipairs(_iter_child) do
+                if child:IsA("Tool") then handleWeapon(child) end            end            table.insert(AutoFireMode_Connections, character.ChildAdded:Connect(handleWeapon))
         end))
         if LocalPlayer.Character then
-            for _, child in ipairs(LocalPlayer.Character:GetChildren()) do if child:IsA("Tool") then handleWeapon(child) end end
-            table.insert(AutoFireMode_Connections, LocalPlayer.Character.ChildAdded:Connect(handleWeapon))
+            local _iter_child = LocalPlayer.Character:GetChildren()
+            for _, child in ipairs(_iter_child) do
+                if child:IsA("Tool") then handleWeapon(child) end            end            table.insert(AutoFireMode_Connections, LocalPlayer.Character.ChildAdded:Connect(handleWeapon))
         end
     end
 
     AutoFireMode_Disable = function()
         if not AutoFireMode_Enabled then return end
         AutoFireMode_Enabled = false
-        for _, conn in ipairs(AutoFireMode_Connections) do if conn.Connected then conn:Disconnect() end end
-        AutoFireMode_Connections = {}
+        for _, conn in ipairs(AutoFireMode_Connections) do            if conn.Connected then conn:Disconnect() end        end        AutoFireMode_Connections = {}
     end
 
-    -- No Fall Damage
     local NoFallDamage_Enabled = false
     local NoFallDamage_Hook = nil
 
@@ -1496,14 +1686,14 @@ do
     end
 end
 
--- ── Block 10: World ESP ─────────────────────────
 do
     local WorldHighlights = {}
 
     local function handleCategoryESP(folder, toggle, color)
         if not folder then return end
         if toggle then
-            for _, inst in ipairs(folder:GetChildren()) do
+            local _iter_inst = folder:GetChildren()
+            for _, inst in ipairs(_iter_inst) do
                 if not WorldHighlights[inst] then
                     local h = Instance.new("Highlight")
                     h.Adornee = inst; h.FillColor = color; h.OutlineColor = color
@@ -1515,8 +1705,11 @@ do
                 end
             end
         else
-            for _, inst in ipairs(folder:GetChildren()) do
-                if WorldHighlights[inst] then WorldHighlights[inst]:Destroy(); WorldHighlights[inst] = nil end
+            local _iter_inst = folder:GetChildren()
+            for _, inst in ipairs(_iter_inst) do
+                if WorldHighlights[inst] then
+                    WorldHighlights[inst]:Destroy(); WorldHighlights[inst] = nil
+                end
             end
         end
     end
@@ -1534,17 +1727,15 @@ do
             handleCategoryESP(Workspace:FindFirstChild("Filter") and Workspace.Filter:FindFirstChild("SpawnedPiles"), P.WESP_Piles, P.WESP_PileColor)
             handleCategoryESP(Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Alarms"), P.WESP_Alarms, P.WESP_AlarmColor)
             for inst, hl in pairs(WorldHighlights) do
-                if not inst or not inst.Parent then hl:Destroy(); WorldHighlights[inst] = nil end
+                if not inst or not inst.Parent then
+                    hl:Destroy(); WorldHighlights[inst] = nil
+                end
             end
         end)
     end)
 end
 
--- ════════════════════════════════════════════════
---   AIMBOT + STICKY AIM (SAME BLOCK — shared locals!)
--- ════════════════════════════════════════════════
 do
-    -- Settings are in P table, read from there
     local mb2Holding = false
     local stickyLocked = false
     local stickyPlayer = nil
@@ -1575,8 +1766,7 @@ do
         end
         if partName == "Any Part" then
             local parts = {Char:FindFirstChild("Head"), Char:FindFirstChild("UpperTorso") or Char:FindFirstChild("Torso"), Char:FindFirstChild("HumanoidRootPart")}
-            for _, p in ipairs(parts) do if p then return p end end
-        end
+            for _, p in ipairs(parts) do                if p then return p end            end        end
         return Char:FindFirstChild("Head")
     end
 
@@ -1587,26 +1777,49 @@ do
         if not myChar or not myHum or myHum.Health <= 0 then return nil end
         local mouseLoc = UserInputService:GetMouseLocation()
         local closest = nil
-        local shortest = P.Aimbot_UseFov and P.Aimbot_FovRadius or 9e9
-        local playersToCheck = forcePlayer and {forcePlayer} or Players:GetPlayers()
+        local shortest
+        if P.Aimbot_UseFov then
+            shortest = P.Aimbot_FovRadius
+        else
+            shortest = 9e9
+        end
+        local playersToCheck
+        if forcePlayer then
+            playersToCheck = {forcePlayer}
+        else
+            playersToCheck = Players:GetPlayers()
+        end
         for _, plr in ipairs(playersToCheck) do
             if plr ~= LocalPlayer and plr.Character then
+                local skip = false
                 if P.Aimbot_CheckTeam then
-                    if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then continue end
+                    if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
+                        skip = true
+                    end
                 end
                 local eChar = plr.Character
                 local eHum = eChar:FindFirstChildOfClass("Humanoid")
                 local eHRP = eChar:FindFirstChild("HumanoidRootPart")
-                if not eHum or not eHRP or eHum.Health <= 0 then continue end
-                if eChar:FindFirstChildOfClass("ForceField") then continue end
-                if P.Aimbot_CheckDowned then
-                    local downed = eChar:GetAttribute("Downed")
-                    if downed then continue end
-                    if eHum.Health < 25 then continue end
+                if not skip and (not eHum or not eHRP or eHum.Health <= 0) then
+                    skip = true
                 end
-                local targetPart = getTargetPart(eChar)
-                if not targetPart then continue end
-                if P.Aimbot_WallCheck then
+                if not skip and eChar:FindFirstChildOfClass("ForceField") then
+                    skip = true
+                end
+                if not skip and P.Aimbot_CheckDowned then
+                    local downed = eChar:GetAttribute("Downed")
+                    if downed then
+                        skip = true
+                    end
+                    if not skip and eHum and eHum.Health < 25 then
+                        skip = true
+                    end
+                end
+                local targetPart = not skip and getTargetPart(eChar)
+                if not skip and not targetPart then
+                    skip = true
+                end
+                if not skip and P.Aimbot_WallCheck then
                     local myHRP = myChar:FindFirstChild("HumanoidRootPart")
                     if myHRP then
                         local rayOrigin = myHRP.Position
@@ -1615,22 +1828,29 @@ do
                         rayParams.FilterType = Enum.RaycastFilterType.Exclude
                         rayParams.FilterDescendantsInstances = {myChar, eChar}
                         local result = Workspace:Raycast(rayOrigin, rayDir, rayParams)
-                        if result then continue end
+                        if result then
+                            skip = true
+                        end
                     end
                 end
+                if not skip then
                 local aimPos = targetPart.Position
                 if P.Aimbot_Prediction > 0 then
                     local vel = eHRP.AssemblyLinearVelocity
-                    if vel then aimPos = aimPos + vel * (P.Aimbot_Prediction / 1000) end
+                    if vel then
+                        aimPos = aimPos + vel * (P.Aimbot_Prediction / 1000)
+                    end
                 end
                 local scrPos, onScr = Camera:WorldToViewportPoint(aimPos)
-                if not onScr then continue end
+                if onScr then
                 local dx = scrPos.X - mouseLoc.X
                 local dy = scrPos.Y - mouseLoc.Y
                 local dist2D = math.sqrt(dx * dx + dy * dy)
                 if dist2D < shortest then
                     shortest = dist2D
                     closest = {player = plr, part = targetPart, aimPos = aimPos}
+                end
+                end
                 end
             end
         end
@@ -1661,9 +1881,7 @@ do
         end
     end
 
-    -- SINGLE Heartbeat: handles FOV circle, sticky aim, AND main aimbot
     RunService.Heartbeat:Connect(function()
-        -- FOV circle
         if FovCircleOk and FovCircle then
             if P.Aimbot_DrawFov and P.Aimbot_Enabled then
                 FovCircle.Position = UserInputService:GetMouseLocation()
@@ -1677,12 +1895,9 @@ do
 
         if not P.Aimbot_Enabled or not mb2Holding then return end
 
-        -- ═══ STICKY AIM (takes priority) ═══
         if P.Aimbot_StickyTarget then
             if stickyPlayer then
-                -- Already locked — aim at target NO MATTER WHAT
                 -- (ignores walls, FOV, team check, everything)
-                -- Only releases on: target death or MB2 release
                 local sc = stickyPlayer.Character
                 local sh = sc and sc:FindFirstChildOfClass("Humanoid")
                 local eHRP = sc and sc:FindFirstChild("HumanoidRootPart")
@@ -1701,13 +1916,11 @@ do
                     end
                     return -- DON'T run main aimbot
                 else
-                    -- Target died
                     stickyPlayer = nil
                     stickyPart = nil
                     stickyLocked = false
                 end
             else
-                -- No lock yet — find first valid target and lock on
                 local target = findTarget()
                 if target then
                     stickyPlayer = target.player
@@ -1718,7 +1931,6 @@ do
             end
         end
 
-        -- ═══ MAIN AIMBOT (only when sticky is off/disabled) ═══
         local target = findTarget()
         if target then aimAt(target) end
     end)
@@ -1733,7 +1945,6 @@ do
     UserInputService.InputEnded:Connect(function(input, processed)
         if input.UserInputType == Enum.UserInputType.MouseButton2 then
             mb2Holding = false
-            -- Release sticky lock when MB2 released
             if stickyLocked then
                 stickyPlayer = nil
                 stickyPart = nil
@@ -1743,11 +1954,7 @@ do
     end)
 end
 
--- ════════════════════════════════════════════════
---   ANTI-AIM + RAGEBOT
--- ════════════════════════════════════════════════
 do
-    -- Anti-Aim
     local AntiAim_Enabled = false
     local AntiAim_Mode = "Off"
     local AntiAim_Connection = nil
@@ -1762,7 +1969,12 @@ do
         if AntiAim_Mode == "Spin" then
             AntiAim_YawAngle = AntiAim_YawAngle + (P.AntiAim_SpinSpeed / 50)
         elseif AntiAim_Mode == "Jitter" then
-            local jitDir = (tick() * (P.AntiAim_JitterSpeed / 10) % 2 < 1) and 1 or -1
+            local jitDir
+            if (tick() * (P.AntiAim_JitterSpeed / 10) % 2 < 1) then
+                jitDir = 1
+            else
+                jitDir = -1
+            end
             AntiAim_YawAngle = jitDir * 90
         else
             return
@@ -1783,7 +1995,9 @@ do
         if not AntiAim_Enabled then return end
         AntiAim_Enabled = false
         AntiAim_YawAngle = 0
-        if AntiAim_Connection then AntiAim_Connection:Disconnect(); AntiAim_Connection = nil end
+        if AntiAim_Connection then
+            AntiAim_Connection:Disconnect(); AntiAim_Connection = nil
+        end
     end
 
     _G.Pidors_AntiAimMode = function(v)
@@ -1795,7 +2009,6 @@ do
         end
     end
 
-    -- Ragebot
     local Ragebot_Enabled = false
     local Ragebot_Coroutine = nil
 
@@ -1804,14 +2017,17 @@ do
     RagebotScreen.Name = "pidors_ragebot"; RagebotScreen.ResetOnSpawn = false
     RagebotScreen.DisplayOrder = 999; RagebotScreen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     pcall(function() RagebotScreen.Parent = game:GetService("CoreGui") end)
-    if not RagebotScreen.Parent then RagebotScreen.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    if not RagebotScreen.Parent then
+        RagebotScreen.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
 
     local RagebotFovFrame = Instance.new("Frame", RagebotScreen)
     RagebotFovFrame.Name = "RagebotFOV"
     RagebotFovFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
     RagebotFovFrame.BackgroundTransparency = 0.85
     RagebotFovFrame.BorderSizePixel = 0; RagebotFovFrame.Visible = false; RagebotFovFrame.ZIndex = 998
-    Instance.new("UICorner", RagebotFovFrame).CornerRadius = UDim.new(1, 0)
+    local _corner = Instance.new("UICorner", RagebotFovFrame)
+    _corner.CornerRadius = UDim.new(1, 0)
     local fovStroke = Instance.new("UIStroke", RagebotFovFrame)
     fovStroke.Color = Color3.fromRGB(255, 50, 50); fovStroke.Thickness = 1.5; fovStroke.Transparency = 0.3
 
@@ -1836,9 +2052,11 @@ do
 
     local function Ragebot_PlayHeadshotSound()
         local audio = Instance.new("Sound")
-        audio.Parent = game:GetService("CoreGui")
+        local _coreGui = game:GetService("CoreGui")
+        audio.Parent = _coreGui
         audio.SoundId = "rbxassetid://8285324545"; audio.Volume = 2; audio:Play()
-        game:GetService("Debris"):AddItem(audio, 2)
+        local _debris = game:GetService("Debris")
+        _debris:AddItem(audio, 2)
     end
 
     local function Ragebot_GetClosest()
@@ -1848,7 +2066,8 @@ do
         local myChar = LocalPlayer.Character
         local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
         if not myHRP then return nil end
-        for _, plr in ipairs(Players:GetPlayers()) do
+        local _iter_plr = Players:GetPlayers()
+        for _, plr in ipairs(_iter_plr) do
             if plr ~= LocalPlayer then
                 local eChar = plr.Character
                 local eHRP = eChar and eChar:FindFirstChild("HumanoidRootPart")
@@ -1856,14 +2075,24 @@ do
                 if eHRP and eHum and eHum.Health > 15 and not eChar:FindFirstChildOfClass("ForceField") then
                     if P.Ragebot_UseFov then
                         local scrPos, onScr = cam:WorldToViewportPoint(eHRP.Position)
-                        if not onScr then continue end
+                        if not onScr then
+                            -- skip
+                        end
+                        if onScr then
                         local dx = scrPos.X - mouseLoc.X; local dy = scrPos.Y - mouseLoc.Y
                         local dist2D = math.sqrt(dx * dx + dy * dy)
-                        if dist2D > P.Ragebot_FovRadius then continue end
-                        if dist2D < shortest then shortest = dist2D; closest = plr end
+                        if dist2D > P.Ragebot_FovRadius then
+                            -- skip
+                        end
+                        if dist2D <= P.Ragebot_FovRadius and dist2D < shortest then
+                            shortest = dist2D; closest = plr
+                        end
+                        end
                     else
                         local dist = (myHRP.Position - eHRP.Position).Magnitude
-                        if dist < shortest then shortest = dist; closest = plr end
+                        if dist < shortest then
+                            shortest = dist; closest = plr
+                        end
                     end
                 end
             end
@@ -1931,11 +2160,7 @@ do
     end
 end
 
--- ════════════════════════════════════════════════
---   GUI POPULATION (LinoriaLib)
--- ════════════════════════════════════════════════
 
--- ── Tab: PLAYER ──────────────────────────────────
 do
     local PlayerGrp = Tabs.Player:AddLeftGroupbox('Player')
 
@@ -2074,12 +2299,20 @@ do
                     end
                 end)
                 if humanoid then humanoid.Died:Connect(function()
-                    if _G.Pidors_HideBodyTrack then pcall(function() _G.Pidors_HideBodyTrack:Stop(); _G.Pidors_HideBodyTrack:Destroy() end); _G.Pidors_HideBodyTrack = nil end
-                    if _G.Pidors_HideBodyConn then _G.Pidors_HideBodyConn:Disconnect(); _G.Pidors_HideBodyConn = nil end
+                    if _G.Pidors_HideBodyTrack then
+                        pcall(function() _G.Pidors_HideBodyTrack:Stop(); _G.Pidors_HideBodyTrack:Destroy() end); _G.Pidors_HideBodyTrack = nil
+                    end
+                    if _G.Pidors_HideBodyConn then
+                        _G.Pidors_HideBodyConn:Disconnect(); _G.Pidors_HideBodyConn = nil
+                    end
                 end) end
             else
-                if _G.Pidors_HideBodyTrack then pcall(function() _G.Pidors_HideBodyTrack:Stop(); _G.Pidors_HideBodyTrack:Destroy() end); _G.Pidors_HideBodyTrack = nil end
-                if _G.Pidors_HideBodyConn then _G.Pidors_HideBodyConn:Disconnect(); _G.Pidors_HideBodyConn = nil end
+                if _G.Pidors_HideBodyTrack then
+                    pcall(function() _G.Pidors_HideBodyTrack:Stop(); _G.Pidors_HideBodyTrack:Destroy() end); _G.Pidors_HideBodyTrack = nil
+                end
+                if _G.Pidors_HideBodyConn then
+                    _G.Pidors_HideBodyConn:Disconnect(); _G.Pidors_HideBodyConn = nil
+                end
             end
         end
     })
@@ -2149,7 +2382,6 @@ do
     })
 end
 
--- ── Tab: COMBAT ────────────────────────────────
 do
     local Aim = Tabs.Combat:AddLeftGroupbox('Aimbot')
 
@@ -2158,7 +2390,11 @@ do
         Default = false,
         Callback = function(v)
             P.Aimbot_Enabled = v
-            Library:Notify(v and "Aimbot ON (Hold MB2)" or "Aimbot OFF", 2)
+            local _notify_msg
+            if v then
+                _notify_msg = "Aimbot ON (Hold MB2)" else _notify_msg = "Aimbot OFF"
+            end
+            Library:Notify(_notify_msg, 2)
         end
     })
     Aim:AddDropdown('AimMethod', {
@@ -2341,7 +2577,8 @@ do
         Default = false,
         Callback = function(v)
             if v then
-                connection_table.C4Control = Workspace.Debris:WaitForChild("VParts").ChildAdded:Connect(function(proj)
+                local _vparts = Workspace.Debris:WaitForChild("VParts")
+                connection_table.C4Control = _vparts.ChildAdded:Connect(function(proj)
                     if not Toggles.C4Control or not Toggles.C4Control.Value then return end
                     if proj.Name ~= "TransIgnore" then return end
                     task.wait()
@@ -2350,7 +2587,9 @@ do
                     local cam = Workspace.CurrentCamera
                     cam.CameraSubject = proj
                     local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then hrp.Anchored = true end
+                    if hrp then
+                        hrp.Anchored = true
+                    end
                     pcall(function()
                         if proj:FindFirstChild("BodyForce") then proj.BodyForce:Destroy() end
                         if proj:FindFirstChild("BodyAngularVelocity") then proj.BodyAngularVelocity:Destroy() end
@@ -2368,13 +2607,26 @@ do
                     task.spawn(function()
                         while proj and proj.Parent and Toggles.C4Control.Value do
                             RunService.RenderStepped:Wait()
-                            local speed = Options.C4Speed and Options.C4Speed.Value or 200
+                            local speed
+                            if Options.C4Speed then
+                                speed = Options.C4Speed.Value
+                            else
+                                speed = 200
+                            end
                             local fwd = 0
                             local side = 0
-                            if UserInputService:IsKeyDown(Enum.KeyCode.W) then fwd = fwd + 1 end
-                            if UserInputService:IsKeyDown(Enum.KeyCode.S) then fwd = fwd - 1 end
-                            if UserInputService:IsKeyDown(Enum.KeyCode.A) then side = side - 1 end
-                            if UserInputService:IsKeyDown(Enum.KeyCode.D) then side = side + 1 end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                                fwd = fwd + 1
+                            end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                                fwd = fwd - 1
+                            end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                                side = side - 1
+                            end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                                side = side + 1
+                            end
                             local vel = ((cam.CFrame.LookVector * fwd) + (cam.CFrame.RightVector * side)) * speed
                             pcall(function() BV.Velocity = vel end)
                             pcall(function() BG.CFrame = cam.CoordinateFrame end)
@@ -2382,8 +2634,12 @@ do
                         end
                         if LocalPlayer.Character then
                             local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-                            if hum then cam.CameraSubject = hum end
-                            if hrp then hrp.Anchored = false end
+                            if hum then
+                                cam.CameraSubject = hum
+                            end
+                            if hrp then
+                                hrp.Anchored = false
+                            end
                         end
                         pcall(function() BV:Destroy() end)
                         pcall(function() BG:Destroy() end)
@@ -2418,7 +2674,8 @@ do
         Default = false,
         Callback = function(v)
             if v then
-                connection_table.ExplosivesControl = Workspace.Debris:WaitForChild("VParts").ChildAdded:Connect(function(proj)
+                local _vparts = Workspace.Debris:WaitForChild("VParts")
+                connection_table.ExplosivesControl = _vparts.ChildAdded:Connect(function(proj)
                     if not Toggles.ExplosivesControl or not Toggles.ExplosivesControl.Value then return end
                     local isRPG = proj.Name == "RPG_Rocket" or proj.Name == "GrenadeLauncherGrenade"
                     if not isRPG then return end
@@ -2427,7 +2684,9 @@ do
                     local cam = Workspace.CurrentCamera
                     cam.CameraSubject = proj
                     local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then hrp.Anchored = true end
+                    if hrp then
+                        hrp.Anchored = true
+                    end
                     pcall(function()
                         if proj:FindFirstChild("BodyForce") then proj.BodyForce:Destroy() end
                         if proj:FindFirstChild("BodyAngularVelocity") then proj.BodyAngularVelocity:Destroy() end
@@ -2445,13 +2704,26 @@ do
                     task.spawn(function()
                         while proj and proj.Parent and Toggles.ExplosivesControl.Value do
                             RunService.RenderStepped:Wait()
-                            local speed = Options.ExplosivesSpeed and Options.ExplosivesSpeed.Value or 200
+                            local speed
+                            if Options.ExplosivesSpeed then
+                                speed = Options.ExplosivesSpeed.Value
+                            else
+                                speed = 200
+                            end
                             local fwd = 0
                             local side = 0
-                            if UserInputService:IsKeyDown(Enum.KeyCode.W) then fwd = fwd + 1 end
-                            if UserInputService:IsKeyDown(Enum.KeyCode.S) then fwd = fwd - 1 end
-                            if UserInputService:IsKeyDown(Enum.KeyCode.A) then side = side - 1 end
-                            if UserInputService:IsKeyDown(Enum.KeyCode.D) then side = side + 1 end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                                fwd = fwd + 1
+                            end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                                fwd = fwd - 1
+                            end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                                side = side - 1
+                            end
+                            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                                side = side + 1
+                            end
                             local vel = ((cam.CFrame.LookVector * fwd) + (cam.CFrame.RightVector * side)) * speed
                             pcall(function() BV.Velocity = vel end)
                             pcall(function() BG.CFrame = cam.CoordinateFrame end)
@@ -2459,8 +2731,12 @@ do
                         end
                         if LocalPlayer.Character then
                             local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-                            if hum then cam.CameraSubject = hum end
-                            if hrp then hrp.Anchored = false end
+                            if hum then
+                                cam.CameraSubject = hum
+                            end
+                            if hrp then
+                                hrp.Anchored = false
+                            end
                         end
                         pcall(function() BV:Destroy() end)
                         pcall(function() BG:Destroy() end)
@@ -2514,8 +2790,7 @@ do
         Callback = function(state)
             _G.Pidors_AutoReload = state
             local reload_event = ReplicatedStorage.Events:FindFirstChild("GNX_R")
-            if not reload_event then Library:Notify("Auto Reload: event not found", 3); return end
-            if not state then return end
+            if not reload_event then                Library:Notify("Auto Reload: event not found", 3); return            end            if not state then return end
             local function setup_reload(tool)
                 if not tool or not tool:FindFirstChild("IsGun") then return end
                 local ammo = tool:FindFirstChild("Values") and tool.Values:FindFirstChild("SERVER_Ammo")
@@ -2562,7 +2837,6 @@ do
 
 end
 
--- ── Tab: ESP ────────────────────────────────────
 do
     local Safe = Tabs.Visuals:AddLeftGroupbox('Safe / Register ESP')
 
@@ -2571,7 +2845,11 @@ do
         Default = false,
         Callback = function(v)
             _G.Pidors_BredMakurz(v)
-            Library:Notify(v and "Safe ESP ON" or "Safe ESP OFF", 2)
+            local _notify_msg
+            if v then
+                _notify_msg = "Safe ESP ON" else _notify_msg = "Safe ESP OFF"
+            end
+            Library:Notify(_notify_msg, 2)
         end
     })
     Safe:AddSlider('BredMakurzDist', {
@@ -2591,7 +2869,11 @@ do
         Callback = function(v)
             P.ESP_Enabled = v
             if not v then _G.Pidors_ESP_HideAll() end
-            Library:Notify(v and "Player ESP ON" or "Player ESP OFF", 2)
+            local _notify_msg
+            if v then
+                _notify_msg = "Player ESP ON" else _notify_msg = "Player ESP OFF"
+            end
+            Library:Notify(_notify_msg, 2)
         end
     })
     local tBoxes = PEsp:AddToggle('ESPBoxes', { Text = 'Boxes', Default = false, Callback = function(v) P.ESP_Boxes = v end })
@@ -2668,7 +2950,6 @@ do
     })
 end
 
--- ── Tab: WORLD ──────────────────────────────────
 do
     local WorldGrp = Tabs.World:AddLeftGroupbox('World')
 
@@ -2729,13 +3010,15 @@ do
         Callback = function(state)
             toggle_states.NoBarriers = state
             if toggle_states.NoBarriers then
-                for _, part in pairs(Workspace.Filter.Parts.F_Parts:GetDescendants()) do
+                local _iter_part = Workspace.Filter.Parts.F_Parts:GetDescendants()
+                for _, part in pairs(_iter_part) do
                     if part:IsA("Part") or part:IsA("MeshPart") then
                         part.CanTouch = false
                     end
                 end
             else
-                for _, part in pairs(Workspace.Filter.Parts.F_Parts:GetDescendants()) do
+                local _iter_part = Workspace.Filter.Parts.F_Parts:GetDescendants()
+                for _, part in pairs(_iter_part) do
                     if part:IsA("Part") or part:IsA("MeshPart") then
                         part.CanTouch = true
                     end
@@ -2761,7 +3044,8 @@ do
                 connection_table.AutopickupScraps = RunService.RenderStepped:Connect(function()
                     local nearest_pile = nil
                     local min_dist = 15
-                    for _, pile in pairs(spawned_piles:GetChildren()) do
+                    local _iter_pile = spawned_piles:GetChildren()
+                    for _, pile in pairs(_iter_pile) do
                         local is_scrap = pile.Name == "S1" or pile.Name == "S2"
                         if is_scrap and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                             local distance = (LocalPlayer.Character.HumanoidRootPart.Position - pile.MeshPart.Position).Magnitude
@@ -2802,7 +3086,8 @@ do
                     local nearest_tool = nil
                     local min_dist = 10
                     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        for _, tool in pairs(spawned_tools:GetChildren()) do
+                        local _iter_tool = spawned_tools:GetChildren()
+                        for _, tool in pairs(_iter_tool) do
                             local handle = tool:FindFirstChild("Handle") or tool:FindFirstChild("WeaponHandle")
                             if handle and (handle:IsA("Part") or handle:IsA("MeshPart")) then
                                 local distance = (LocalPlayer.Character.HumanoidRootPart.Position - handle.Position).Magnitude
@@ -2848,7 +3133,8 @@ do
                 connection_table.AutopickupCrates = RunService.RenderStepped:Connect(function()
                     local nearest_crate = nil
                     local min_dist = 15
-                    for _, pile in pairs(spawned_piles:GetChildren()) do
+                    local _iter_pile = spawned_piles:GetChildren()
+                    for _, pile in pairs(_iter_pile) do
                         local is_crate = pile.Name == "C1" or pile.Name == "C2" or pile.Name == "C3"
                         if is_crate and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                             local distance = (LocalPlayer.Character.HumanoidRootPart.Position - pile.MeshPart.Position).Magnitude
@@ -2896,7 +3182,9 @@ do
                     connection_table.Ambiance = nil
                 end
                 local cc = Lighting:FindFirstChild("CustomAmbiance")
-                if cc then cc.Enabled = false end
+                if cc then
+                    cc.Enabled = false
+                end
             end
         end
     })
@@ -2945,7 +3233,9 @@ do
                 P.OldFogEnd = P.OldFogEnd or Lighting.FogEnd
                 Lighting.FogEnd = 100000
             else
-                if P.OldFogEnd then Lighting.FogEnd = P.OldFogEnd end
+                if P.OldFogEnd then
+                    Lighting.FogEnd = P.OldFogEnd
+                end
             end
         end
     })
@@ -2974,7 +3264,9 @@ do
         Callback = function(v)
             P.BloomIntensity = v
             local b = Lighting:FindFirstChild("CustomBloom")
-            if b and b.Enabled then b.Intensity = v end
+            if b and b.Enabled then
+                b.Intensity = v
+            end
         end
     })
     AmbianceGrp:AddSlider('BloomSize', {
@@ -2986,7 +3278,9 @@ do
         Callback = function(v)
             P.BloomSize = v
             local b = Lighting:FindFirstChild("CustomBloom")
-            if b and b.Enabled then b.Size = v end
+            if b and b.Enabled then
+                b.Size = v
+            end
         end
     })
     AmbianceGrp:AddSlider('BloomThreshold', {
@@ -2998,7 +3292,9 @@ do
         Callback = function(v)
             P.BloomThreshold = v
             local b = Lighting:FindFirstChild("CustomBloom")
-            if b and b.Enabled then b.Threshold = v end
+            if b and b.Enabled then
+                b.Threshold = v
+            end
         end
     })
 
@@ -3014,7 +3310,8 @@ do
                     local mat = Enum.Material[Options.PlayerRigMaterial.Value]
                     local col = Options.PlayerRigColor.Value
                     local tool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
-                    for _, p in pairs(LocalPlayer.Character:GetDescendants()) do
+                    local _iter_p = LocalPlayer.Character:GetDescendants()
+                    for _, p in pairs(_iter_p) do
                         if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
                             if not tool or not p:IsDescendantOf(tool) then
                                 if not p:GetAttribute("OrigMat") then
@@ -3034,7 +3331,8 @@ do
                 end
                 if LocalPlayer.Character then
                     local tool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
-                    for _, p in pairs(LocalPlayer.Character:GetDescendants()) do
+                    local _iter_p = LocalPlayer.Character:GetDescendants()
+                    for _, p in pairs(_iter_p) do
                         if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" and p:GetAttribute("OrigMat") then
                             if not tool or not p:IsDescendantOf(tool) then
                                 p.Material = Enum.Material[p:GetAttribute("OrigMat")]
@@ -3073,7 +3371,6 @@ do
     tWPiles:AddColorPicker('WESPPileColor', { Default = Color3.fromRGB(0,255,255), Callback = function(v) P.WESP_PileColor = v end })
 end
 
--- ── Tab: MISC ──────────────────────────────────
 do
     local MiscGrp = Tabs.Misc:AddLeftGroupbox('Utility')
 
@@ -3109,7 +3406,8 @@ do
             else
                 local function find_nearest_atm(max_distance)
                     local closest_part = nil
-                    for _, atm in ipairs(Workspace.Map.ATMz:GetChildren()) do
+                    local _iter_atm = Workspace.Map.ATMz:GetChildren()
+                    for _, atm in ipairs(_iter_atm) do
                         local main = atm:FindFirstChild("MainPart")
                         if main and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                             local distance = (LocalPlayer.Character.HumanoidRootPart.Position - main.Position).Magnitude
@@ -3138,7 +3436,6 @@ do
     })
 end
 
--- ── Tab: WORKING ───────────────────────────────
 do
     local AnimGrp = Tabs.Working:AddLeftGroupbox('Animation Modifier')
 
@@ -3157,7 +3454,12 @@ do
                     end
                     connection_table.SlowAnim = animator.AnimationPlayed:Connect(function(track)
                         if Toggles.SlowAnimToggle and Toggles.SlowAnimToggle.Value then
-                            local speed = Options.SlowAnimSpeed and Options.SlowAnimSpeed.Value or 0.2
+                            local speed
+                            if Options.SlowAnimSpeed then
+                                speed = Options.SlowAnimSpeed.Value
+                            else
+                                speed = 0.2
+                            end
                             track:AdjustSpeed(speed)
                         end
                     end)
@@ -3192,9 +3494,6 @@ do
     })
 end
 
--- ════════════════════════════════════════════════
---   SAVE MANAGER + THEME MANAGER
--- ════════════════════════════════════════════════
 ThemeManager:SetLibrary(Library)
 ThemeManager:SetFolder('pidors')
 ThemeManager:ApplyToTab(Tabs['UI Settings'])
@@ -3204,16 +3503,11 @@ SaveManager:IgnoreThemeSettings()
 SaveManager:SetFolder('pidors')
 SaveManager:BuildConfigSection(Tabs['UI Settings'])
 
--- ════════════════════════════════════════════════
---   STARTUP
--- ════════════════════════════════════════════════
 
--- Death handler
 local function onCharDied()
     if Fly_Enable then
         local FlyConn = nil
         Fly_Disable()
-        -- Toggle off via LinoriaLib element if accessible
     end
 end
 
@@ -3231,5 +3525,6 @@ if LocalPlayer.Character then
     if hum then hum.Died:Connect(onCharDied) end
 end
 
--- Welcome
 Library:Notify("pidors.cc v5.0 loaded!", 3)
+
+
