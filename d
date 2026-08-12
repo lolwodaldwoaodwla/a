@@ -3524,6 +3524,7 @@ if LocalPlayer.Character then
     if hum then hum.Died:Connect(onCharDied) end
 end
 
-Library:Notify("pidors.cc v5.0 loaded!", 3)
+end
 
+Library:Notify("pidors.cc v5.0 loaded!", 3)
 
