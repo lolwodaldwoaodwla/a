@@ -1,3 +1,7 @@
+--Pidors.cc
+-- Version 5.0
+-- Shariktools Edition
+
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -35,11 +39,11 @@ if getgc then
         task.delay(6, function()
             pcall(function()
                 if Library and Library.Notify then
-                    Library:Notify("AC Bypass failed - your executor doesn't support getgc, you may get kicked", 6)
+                    Notifications:Create({Name = "AC Bypass failed - your executor doesn't support getgc, you may get kicked", LifeTime = 6})
                 else
                     game:GetService('StarterGui'):SetCore('SendNotification', {
                         Title = 'pidors.cc',
-                        Text = "AC Bypass failed - you may get kicked",
+                        Name = "AC Bypass failed - you may get kicked",
                         Duration = 6
                     })
                 end
@@ -81,25 +85,35 @@ if not connection_table then
     connection_table = {}
 end
 
-local _ls_Library_url = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"
-local _ls_Library_data = game:HttpGet(_ls_Library_url)
-local _ls_Library = loadstring(_ls_Library_data)
-local Library = _ls_Library()
-local _ls_ThemeManager_url = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"
-local _ls_ThemeManager_data = game:HttpGet(_ls_ThemeManager_url)
-local _ls_ThemeManager = loadstring(_ls_ThemeManager_data)
-local ThemeManager = _ls_ThemeManager()
-local _ls_SaveManager_url = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"
-local _ls_SaveManager_data = game:HttpGet(_ls_SaveManager_url)
-local _ls_SaveManager = loadstring(_ls_SaveManager_data)
-local SaveManager = _ls_SaveManager()
+
+local _lib_success, _lib_result = pcall(function()
+    return game:HttpGet("https://raw.githubusercontent.com/eradicator2/priv13-criminality/refs/heads/main/library.txt")
+end)
+
+if not _lib_success or type(_lib_result) ~= "string" or _lib_result == "" then
+    warn("ui library wont load idk why")
+    return
+end
+
+local _lib_func = loadstring(_lib_result)
+if not _lib_func then
+    warn("ui library wont load idk why")
+    return
+end
+
+local Library, Notifications, UILibThemes = _lib_func()
+local Flags = Library.Flags
+
 
 if not Library.Notify then
-    function Library:Notify(text, duration)
+
+if not Notifications then
+    Notifications = { Create = function(props)
         pcall(function()
-            game:GetService('StarterGui'):SetCore('SendNotification', {Title='pidors.cc', Text=text, Duration=duration or 3})
+            game:GetService('StarterGui'):SetCore('SendNotification', {Title='pidors.cc', Text=props.Name, Duration=props.LifeTime or 3})
         end)
-    end
+    end }
+end
 end
 
 local P = {
@@ -136,22 +150,22 @@ local P = {
     SilentAim_TargetParts = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm", "LeftUpperLeg", "LeftLowerLeg", "RightUpperLeg", "RightLowerLeg"},
 }
 
-local Window = Library:CreateWindow({
-    Title = 'discord.gg/3UQHUVsAAu',
-    Center = true,
-    AutoShow = true,
+local Window = Library:Window({
+    Name = 'discord.gg/3UQHUVsAAu',
+    
+    
     Size = UDim2.new(0, 550, 0, 650),
-    TabPadding = 4,
+    
 })
 
 local Tabs = {
-    Player = Window:AddTab('Player'),
-    Combat = Window:AddTab('Combat'),
-    Visuals = Window:AddTab('Visuals'),
-    World = Window:AddTab('World'),
+    Player = Window:Tab({Name = 'Player'}),
+    Combat = Window:Tab({Name = 'Combat'}),
+    Visuals = Window:Tab({Name = 'Visuals'}),
+    World = Window:Tab({Name = 'World'}),
 
-    Misc = Window:AddTab('Misc'),
-    ['UI Settings'] = Window:AddTab('UI Settings'),
+    Misc = Window:Tab({Name = 'Misc'}),
+    ['UI Settings'] = Window:Tab({Name = 'UI Settings'}),
 }
 
 local function formatName(name)
@@ -1256,7 +1270,7 @@ do
         if Shadow_Active or not Shadow_Usable then return end
         Shadow_RefreshCharRefs()
         if not Shadow_Char or not Shadow_HMND or not Shadow_HRP then return end
-        if not Shadow_Char:FindFirstChild("Torso") then            Library:Notify("Invisible: R6 Avatar required!", 3); return        end        Shadow_Active = true
+        if not Shadow_Char:FindFirstChild("Torso") then            Notifications:Create({Name = "Invisible: R6 Avatar required!", LifeTime = 3}); return        end        Shadow_Active = true
         Workspace.CurrentCamera.CameraSubject = Shadow_HRP
         Shadow_CacheAnimTrack()
     end
@@ -1333,7 +1347,7 @@ do
         end
         task.wait(); Shadow_RefreshCharRefs()
         if Shadow_HMND then
-            if Shadow_HMND.RigType ~= Enum.HumanoidRigType.R6 then Shadow_Usable = false; Library:Notify("Invisible: Non-R6 Avatar detected!", 3)
+            if Shadow_HMND.RigType ~= Enum.HumanoidRigType.R6 then Shadow_Usable = false; Notifications:Create({Name = "Invisible: Non-R6 Avatar detected!", LifeTime = 3})
             else Shadow_Usable = true end
         end
     end)
@@ -1857,7 +1871,7 @@ do
         if NoFallDamage_Enabled then return end
         NoFallDamage_Enabled = true
         if LocalPlayer.Character then addFF(LocalPlayer.Character) end
-        Library:Notify("No Fall Damage ON", 2)
+        Notifications:Create({Name = "No Fall Damage ON", LifeTime = 2})
         local c = LocalPlayer.CharacterAdded:Connect(function(c)
             task.wait(0.5)
             if NoFallDamage_Enabled then addFF(c) end
@@ -1875,7 +1889,7 @@ do
                 if o:IsA("ForceField") and o.Visible == false then o:Destroy() end
             end
         end
-        Library:Notify("No Fall Damage OFF", 2)
+        Notifications:Create({Name = "No Fall Damage OFF", LifeTime = 2})
     end
 end
 
@@ -2314,7 +2328,7 @@ local function RB_Enable()
     local start_shoot_event = events and events:FindFirstChild("GNX_S")
     local finish_shoot_event = events and events:FindFirstChild("ZFKLF__H")
     if not (start_shoot_event and finish_shoot_event) then
-        RB.Enabled = false; Library:Notify("Ragebot: Remotes not found", 3); return
+        RB.Enabled = false; Notifications:Create({Name = "Ragebot: Remotes not found", LifeTime = 3}); return
     end
     RB.Enabled = true
     if RB.FovCircle then pcall(function() RB.FovCircle:Remove() end) end
@@ -2580,7 +2594,7 @@ local function RB_Enable()
                                                 HitLogSett.LastLogTime = tick()
                                                 local hit_dist = (local_hrp.Position - target_head.Position).Magnitude
                                                 local msg = string.format("[%s] hit %s | HP: %d | Dist: %dst", hit_part_name, target_player.Name, math.max(target_humanoid.Health, 0), math.round(hit_dist))
-                                                if HitLogSett.Method == "Library" then Library:Notify(msg, 2)
+                                                if HitLogSett.Method == "Library" then Notifications:Create({Name = msg, LifeTime = 2})
                                                 elseif HitLog then HitLog:Notify(msg) end
                                             end
                                         else RunService.RenderStepped:Wait() end
@@ -2594,7 +2608,7 @@ local function RB_Enable()
             RunService.RenderStepped:Wait()
         end
     end)
-    Library:Notify("Ragebot ON", 2)
+    Notifications:Create({Name = "Ragebot ON", LifeTime = 2})
 end
 
 local function RB_Disable()
@@ -2607,7 +2621,7 @@ local function RB_Disable()
     if RB.TargetLineConn then RB.TargetLineConn:Disconnect(); RB.TargetLineConn = nil end
     if RB.FovCircle then pcall(function() RB.FovCircle:Remove() end); RB.FovCircle = nil end
     if RB.TargetLineObj then pcall(function() RB.TargetLineObj:Remove() end); RB.TargetLineObj = nil end
-    Library:Notify("Ragebot OFF", 2)
+    Notifications:Create({Name = "Ragebot OFF", LifeTime = 2})
 end
 
 do
@@ -2669,63 +2683,63 @@ do
 end
 
 do
-    local PlayerGrp = Tabs.Player:AddLeftGroupbox('Player')
+    local PlayerGrp = Tabs.Player:Section({Name = 'Player', Side = 'Left'})
 
-    PlayerGrp:AddSlider('FovValue', {
-        Text = 'FOV',
+    PlayerGrp:Slider({Flag = 'FovValue', 
+        Name = 'FOV',
         Default = 70,
         Min = 30,
         Max = 120,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v)
             P.Fov_Value = v
             if not Fov_Enabled then Fov_Enable() end
         end
     })
-    PlayerGrp:AddSlider('CameraDistance', {
-        Text = 'Camera Distance',
+    PlayerGrp:Slider({Flag = 'CameraDistance', 
+        Name = 'Camera Distance',
         Default = LocalPlayer.CameraMaxZoomDistance,
         Min = 10,
         Max = 500,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) LocalPlayer.CameraMaxZoomDistance = v end
     })
-    PlayerGrp:AddSlider('Gravity', {
-        Text = 'Gravity',
+    PlayerGrp:Slider({Flag = 'Gravity', 
+        Name = 'Gravity',
         Default = math.floor(Workspace.Gravity),
         Min = 10,
         Max = 500,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) Workspace.Gravity = v end
     })
 
     PlayerGrp:AddLabel('')
 
-    PlayerGrp:AddToggle('InfStamina', {
-        Text = 'Infinity Stamina',
+    PlayerGrp:Toggle({Flag = 'InfStamina', 
+        Name = 'Infinity Stamina',
         Default = false,
         Callback = function(v)
             if v then
                 local ok = InfiniteStamina_Enable()
-                if ok then Library:Notify("Inf Stamina ON", 2)
-                else Library:Notify("Inf Stamina: hook failed", 3) end
+                if ok then Notifications:Create({Name = "Inf Stamina ON", LifeTime = 2})
+                else Notifications:Create({Name = "Inf Stamina: hook failed", LifeTime = 3}) end
             else
-                InfiniteStamina_Disable(); Library:Notify("Inf Stamina OFF", 2)
+                InfiniteStamina_Disable(); Notifications:Create({Name = "Inf Stamina OFF", LifeTime = 2})
             end
         end
     })
 
-    PlayerGrp:AddToggle('NoFallDamage', {
-        Text = 'No Fall Damage',
+    PlayerGrp:Toggle({Flag = 'NoFallDamage', 
+        Name = 'No Fall Damage',
         Default = false,
         Callback = function(v)
-            if v then NoFallDamage_Enable(); Library:Notify("No Fall Damage ON", 2)
-            else NoFallDamage_Disable(); Library:Notify("No Fall Damage OFF", 2) end
+            if v then NoFallDamage_Enable(); Notifications:Create({Name = "No Fall Damage ON", LifeTime = 2})
+            else NoFallDamage_Disable(); Notifications:Create({Name = "No Fall Damage OFF", LifeTime = 2}) end
         end
     })
 
-    PlayerGrp:AddToggle('HideHead', {
-        Text = 'Hide Head',
+    PlayerGrp:Toggle({Flag = 'HideHead', 
+        Name = 'Hide Head',
         Default = false,
         Tooltip = 'Hides your head (server-side)',
         Callback = function(state)
@@ -2751,8 +2765,8 @@ do
         end
     })
 
-    PlayerGrp:AddToggle('StopNeckMove', {
-        Text = 'Stop Neck Move',
+    PlayerGrp:Toggle({Flag = 'StopNeckMove', 
+        Name = 'Stop Neck Move',
         Default = false,
         Callback = function(state)
             if state then
@@ -2776,8 +2790,8 @@ do
         end
     })
 
-    local HideBodyToggle = PlayerGrp:AddToggle('HideBody', {
-        Text = 'Hide Body',
+    local HideBodyToggle = PlayerGrp:Toggle({Flag = 'HideBody', 
+        Name = 'Hide Body',
         Default = false,
         Tooltip = 'Hides your body underground',
         Callback = function(state)
@@ -2823,77 +2837,73 @@ do
             end
         end
     })
-    HideBodyToggle:AddKeyPicker('HideBody', {
+    HideBodyToggle:Keybind({Flag = 'HideBody', 
         Default = 'None',
-        SyncToggleState = true,
         Mode = 'Toggle',
-        Text = 'Hide Body',
+        Name = 'Hide Body',
         Callback = function() end
     })
 
-    local InvisibleToggle = PlayerGrp:AddToggle('Invisible', {
-        Text = 'Invisible',
+    local InvisibleToggle = PlayerGrp:Toggle({Flag = 'Invisible', 
+        Name = 'Invisible',
         Default = false,
         Tooltip = 'Hides your character (Shadow)',
         Callback = function(v)
-            if v then Shadow_Enable(); Library:Notify("Invisible ON", 2)
-            else Shadow_Disable(); Library:Notify("Invisible OFF", 2) end
+            if v then Shadow_Enable(); Notifications:Create({Name = "Invisible ON", LifeTime = 2})
+            else Shadow_Disable(); Notifications:Create({Name = "Invisible OFF", LifeTime = 2}) end
         end
     })
-    InvisibleToggle:AddKeyPicker('Invisible', {
+    InvisibleToggle:Keybind({Flag = 'Invisible', 
         Default = 'None',
-        SyncToggleState = true,
         Mode = 'Toggle',
-        Text = 'Invisible',
+        Name = 'Invisible',
         Callback = function() end
     })
 
-    local NoclipToggle = PlayerGrp:AddToggle('Noclip', {
-        Text = 'Noclip',
+    local NoclipToggle = PlayerGrp:Toggle({Flag = 'Noclip', 
+        Name = 'Noclip',
         Default = false,
         Callback = function(v)
-            if v then Noclip_Enable(); Library:Notify("Noclip ON", 2)
-            else Noclip_Disable(); Library:Notify("Noclip OFF", 2) end
+            if v then Noclip_Enable(); Notifications:Create({Name = "Noclip ON", LifeTime = 2})
+            else Noclip_Disable(); Notifications:Create({Name = "Noclip OFF", LifeTime = 2}) end
         end
     })
-    NoclipToggle:AddKeyPicker('Noclip', {
+    NoclipToggle:Keybind({Flag = 'Noclip', 
         Default = 'None',
-        SyncToggleState = true,
         Mode = 'Toggle',
-        Text = 'Noclip',
+        Name = 'Noclip',
         Callback = function() end
     })
 
-    local FlyGrp = Tabs.Player:AddRightGroupbox('Fly')
+    local FlyGrp = Tabs.Player:Section({Name = 'Fly', Side = 'Right'})
 
-    local FlyToggle = FlyGrp:AddToggle('Fly', {
-        Text = 'Fly',
+    local FlyToggle = FlyGrp:Toggle({Flag = 'Fly', 
+        Name = 'Fly',
         Default = false,
         Callback = function(v)
-            if v then Fly_Enable(); Library:Notify("Fly ON", 2)
-            else Fly_Disable(); Library:Notify("Fly OFF", 2) end
+            if v then Fly_Enable(); Notifications:Create({Name = "Fly ON", LifeTime = 2})
+            else Fly_Disable(); Notifications:Create({Name = "Fly OFF", LifeTime = 2}) end
         end
     })
-    FlyToggle:AddKeyPicker('Fly', {
+    FlyToggle:Keybind({Flag = 'Fly', 
         Default = 'None',
-        SyncToggleState = true,
         Mode = 'Toggle',
-        Text = 'Fly',
+        Name = 'Fly',
         Callback = function() end
     })
-    FlyGrp:AddLabel('Fly method')
-    FlyGrp:AddDropdown('FlyMode', {
-        Values = {'Old', 'Ragdoll'},
+    FlyGrp:Label({Name = 'Fly method'})
+    FlyGrp:Dropdown({Flag = 'FlyMode', 
+        Options = {'Old', 'Ragdoll'},
         Default = 1,
         Callback = function(v) P.Fly_Method = v end
     })
 end
 
 do
-    local Aim = Tabs.Combat:AddLeftGroupbox('Aimbot')
+    local Aim = Tabs.Combat:Section({Name = 'Aimbot', Side = 'Left'})
 
-    Aim:AddToggle('Aimbot', {
-        Text = 'Enable Aimbot',
+    Aim:Toggle({Flag = 'Aimbot', 
+        Name = 'Enable Aimbot',
         Default = false,
         Callback = function(v)
             P.Aimbot_Enabled = v
@@ -2901,122 +2911,121 @@ do
             if v then
                 _notify_msg = "Aimbot ON (Hold MB2)" else _notify_msg = "Aimbot OFF"
             end
-            Library:Notify(_notify_msg, 2)
+            Notifications:Create({Name = _notify_msg, LifeTime = 2})
         end
     })
-    Aim:AddDropdown('AimMethod', {
-        Values = {'Camera', 'Mouse'},
+    Aim:Dropdown({Flag = 'AimMethod', 
+        Options = {'Camera', 'Mouse'},
         Default = 1,
         Callback = function(v) P.Aimbot_Method = v end
     })
-    Aim:AddSlider('AimSmooth', {
-        Text = 'Smoothness',
+    Aim:Slider({Flag = 'AimSmooth', 
+        Name = 'Smoothness',
         Default = 5,
         Min = 0,
         Max = 100,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.Aimbot_Smoothness = v end
     })
-    Aim:AddSlider('AimFov', {
-        Text = 'Fov Radius',
+    Aim:Slider({Flag = 'AimFov', 
+        Name = 'Fov Radius',
         Default = 100,
         Min = 10,
         Max = 600,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.Aimbot_FovRadius = v end
     })
-    Aim:AddToggle('AimUseFov', { Text = 'Use Fov', Default = false, Callback = function(v) P.Aimbot_UseFov = v end })
-    local AimDrawFovToggle = Aim:AddToggle('AimDrawFov', { Text = 'Draw Fov', Default = false, Callback = function(v) P.Aimbot_DrawFov = v end })
-    AimDrawFovToggle:AddColorPicker('AimFovColor', {
-        Default = Color3.fromRGB(255, 255, 255),
+    Aim:Toggle({Flag = 'AimUseFov',  Name = 'Use Fov', Default = false, Callback = function(v) P.Aimbot_UseFov = v end })
+    local AimDrawFovToggle = Aim:Toggle({Flag = 'AimDrawFov',  Name = 'Draw Fov', Default = false, Callback = function(v) P.Aimbot_DrawFov = v end })
+    AimDrawFovToggle:Colorpicker({Flag = 'AimFovColor', 
+        Color = Color3.fromRGB(255, 255, 255),
         Title = 'Fov Color',
         Callback = function(v) P.Aimbot_FovColor = v end
     })
-    Aim:AddToggle('AimCheckTeam', { Text = 'Check Team', Default = true, Callback = function(v) P.Aimbot_CheckTeam = v end })
-    Aim:AddToggle('AimCheckDowned', { Text = 'Check Downed', Default = false, Callback = function(v) P.Aimbot_CheckDowned = v end })
-    Aim:AddToggle('AimWallCheck', { Text = 'Wall Check', Default = true, Callback = function(v) P.Aimbot_WallCheck = v end })
-    Aim:AddToggle('StickyAim', {
-        Text = 'Sticky Aim',
+    Aim:Toggle({Flag = 'AimCheckTeam',  Name = 'Check Team', Default = true, Callback = function(v) P.Aimbot_CheckTeam = v end })
+    Aim:Toggle({Flag = 'AimCheckDowned',  Name = 'Check Downed', Default = false, Callback = function(v) P.Aimbot_CheckDowned = v end })
+    Aim:Toggle({Flag = 'AimWallCheck',  Name = 'Wall Check', Default = true, Callback = function(v) P.Aimbot_WallCheck = v end })
+    Aim:Toggle({Flag = 'StickyAim', 
+        Name = 'Sticky Aim',
         Default = false,
         Tooltip = 'Locks onto target until MB2 release or death. Ignores walls & FOV.',
         Callback = function(v) P.Aimbot_StickyTarget = v end
     })
-    Aim:AddSlider('AimPred', {
-        Text = 'Prediction',
+    Aim:Slider({Flag = 'AimPred', 
+        Name = 'Prediction',
         Default = 100,
         Min = 0,
         Max = 500,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.Aimbot_Prediction = v end
     })
-    Aim:AddDropdown('AimPart', {
-        Values = {'Any Part', 'Head', 'Torso', 'HumanoidRootPart', 'Left Arm', 'Right Arm', 'Left Leg', 'Right Leg'},
+    Aim:Dropdown({Flag = 'AimPart', 
+        Options = {'Any Part', 'Head', 'Torso', 'HumanoidRootPart', 'Left Arm', 'Right Arm', 'Left Leg', 'Right Leg'},
         Default = 2,
         Callback = function(v) P.Aimbot_Part = v end
     })
-    local RBGrp = Tabs.Combat:AddLeftGroupbox('Ragebot')
+    local RBGrp = Tabs.Combat:Section({Name = 'Ragebot', Side = 'Left'})
 
-    local RagebotToggle = RBGrp:AddToggle('Ragebot', {
-        Text = 'Enable Ragebot',
+    local RagebotToggle = RBGrp:Toggle({Flag = 'Ragebot', 
+        Name = 'Enable Ragebot',
         Default = false,
         Callback = function(v)
             if v then RB_Enable() else RB_Disable() end
         end
     })
-    RagebotToggle:AddKeyPicker('RagebotKey', {
+    RagebotToggle:Keybind({Flag = 'RagebotKey', 
         Default = 'None',
-        SyncToggleState = true,
         Mode = 'Toggle',
-        Text = 'Ragebot',
+        Name = 'Ragebot',
         Callback = function() end
     })
 
-    RBGrp:AddDropdown('RageSphereMode', {
-        Values = {'Fibonacci', 'Random', 'Cardinals', 'Vector', 'Hammersley', 'Femboy Fibonacci'},
+    RBGrp:Dropdown({Flag = 'RageSphereMode', 
+        Options = {'Fibonacci', 'Random', 'Cardinals', 'Vector', 'Hammersley', 'Femboy Fibonacci'},
         Default = 1,
         Multi = false,
-        Text = 'Sphere Algorithm',
+        Name = 'Sphere Algorithm',
         Callback = function(v) RB.SphereMode = v end
     })
-    RBGrp:AddSlider('RageSphereRadius', {
-        Text = 'Sphere Radius',
+    RBGrp:Slider({Flag = 'RageSphereRadius', 
+        Name = 'Sphere Radius',
         Default = 19,
         Min = 1,
         Max = 19,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) RB.SphereRadius = v end
     })
-    RBGrp:AddSlider('RageFireRate', {
-        Text = 'Fire Rate',
+    RBGrp:Slider({Flag = 'RageFireRate', 
+        Name = 'Fire Rate',
         Default = 50,
         Min = 0,
         Max = 100,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) RB.FireRate = v end
     })
 
     local FovLimitToggleRef = nil
-    FovLimitToggleRef = RBGrp:AddToggle('RageFovLimit', {
-        Text = 'FOV Limit',
+    FovLimitToggleRef = RBGrp:Toggle({Flag = 'RageFovLimit', 
+        Name = 'FOV Limit',
         Default = false,
         Callback = function(v) RB.FovLimit = v end
     })
-    RBGrp:AddSlider('RageFovRadius', {
-        Text = 'FOV Radius',
+    RBGrp:Slider({Flag = 'RageFovRadius', 
+        Name = 'FOV Radius',
         Default = 150,
         Min = 10,
         Max = 600,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v)
             RB.FovRadius = v
             if RB.FovCircle then RB.FovCircle.Radius = v end
         end
     })
-    RBGrp:AddToggle('RageShowFov', {
-        Text = 'Show FOV Circle',
+    RBGrp:Toggle({Flag = 'RageShowFov', 
+        Name = 'Show FOV Circle',
         Default = false,
         Callback = function(v) RB.ShowFov = v end
-    }):AddColorPicker('RageFovColor', {
+    }):Colorpicker({Flag = 'RageFovColor', 
         Default = Color3.new(1, 1, 1),
         Title = 'FOV Color',
         Callback = function(v)
@@ -3025,11 +3034,11 @@ do
         end
     })
 
-    RBGrp:AddToggle('RageTargetLine', {
-        Text = 'Target Line',
+    RBGrp:Toggle({Flag = 'RageTargetLine', 
+        Name = 'Target Line',
         Default = false,
         Callback = function(v) RB.TargetLine = v end
-    }):AddColorPicker('RageTargetLineColor', {
+    }):Colorpicker({Flag = 'RageTargetLineColor', 
         Default = Color3.new(1, 0, 0),
         Title = 'Target Line Color',
         Callback = function(v)
@@ -3038,24 +3047,24 @@ do
         end
     })
 
-    RBGrp:AddToggle('RageCheckDowned', {
-        Text = 'Check Downed',
+    RBGrp:Toggle({Flag = 'RageCheckDowned', 
+        Name = 'Check Downed',
         Default = false,
         Callback = function(v) RB.CheckDowned = v end
     })
-    RBGrp:AddToggle('RageCheckDead', {
-        Text = 'Check Dead',
+    RBGrp:Toggle({Flag = 'RageCheckDead', 
+        Name = 'Check Dead',
         Default = false,
         Callback = function(v) RB.CheckDead = v end
     })
-    RBGrp:AddToggle('RageCheckTeam', {
-        Text = 'Check Team',
+    RBGrp:Toggle({Flag = 'RageCheckTeam', 
+        Name = 'Check Team',
         Default = false,
         Callback = function(v) RB.CheckTeam = v end
     })
 
-    RBGrp:AddToggle('RageTPHit', {
-        Text = 'TP Hit',
+    RBGrp:Toggle({Flag = 'RageTPHit', 
+        Name = 'TP Hit',
         Default = false,
         Callback = function(v)
             RB.TPHit = v
@@ -3073,8 +3082,8 @@ do
         end
     })
 
-    RBGrp:AddToggle('RageSkyboxBullet', {
-        Text = 'Skybox Bullet',
+    RBGrp:Toggle({Flag = 'RageSkyboxBullet', 
+        Name = 'Skybox Bullet',
         Default = false,
         Callback = function(v)
             RB.SkyboxBullet = v
@@ -3099,92 +3108,92 @@ do
         end
     })
 
-    RBGrp:AddDropdown('RageSkyboxLocation', {
-        Values = {'Left+Right', 'Random', 'Custom'},
+    RBGrp:Dropdown({Flag = 'RageSkyboxLocation', 
+        Options = {'Left+Right', 'Random', 'Custom'},
         Default = 1,
         Multi = false,
-        Text = 'Skybox Location',
+        Name = 'Skybox Location',
         Callback = function(v) RB.SkyboxBulletMode = v end
     })
-    RBGrp:AddSlider('RageSkyboxHeight', {
-        Text = 'Skybox Height',
+    RBGrp:Slider({Flag = 'RageSkyboxHeight', 
+        Name = 'Skybox Height',
         Default = 12,
         Min = 4,
         Max = 30,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) RB.SkyboxBulletHeight = v end
     })
-    RBGrp:AddSlider('RageSkyboxOffset', {
-        Text = 'Skybox Offset',
+    RBGrp:Slider({Flag = 'RageSkyboxOffset', 
+        Name = 'Skybox Offset',
         Default = 6,
         Min = 2,
         Max = 15,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) RB.SkyboxBulletOffset = v end
     })
-    RBGrp:AddSlider('RageSkyboxInterval', {
-        Text = 'Skybox Switch Speed',
+    RBGrp:Slider({Flag = 'RageSkyboxInterval', 
+        Name = 'Skybox Switch Speed',
         Default = 1,
         Min = 1,
         Max = 30,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) RB.SkyboxBulletInterval = v / 100 end
     })
-    RBGrp:AddSlider('RageSkyboxCustomRight', {
-        Text = 'Custom Right',
+    RBGrp:Slider({Flag = 'RageSkyboxCustomRight', 
+        Name = 'Custom Right',
         Default = 0,
         Min = -30,
         Max = 30,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) RB.SkyboxBulletCustomRight = v end
     })
-    RBGrp:AddSlider('RageSkyboxCustomHeight', {
-        Text = 'Custom Height',
+    RBGrp:Slider({Flag = 'RageSkyboxCustomHeight', 
+        Name = 'Custom Height',
         Default = 12,
         Min = -30,
         Max = 30,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) RB.SkyboxBulletCustomHeight = v end
     })
-    RBGrp:AddSlider('RageSkyboxCustomForward', {
-        Text = 'Custom Forward',
+    RBGrp:Slider({Flag = 'RageSkyboxCustomForward', 
+        Name = 'Custom Forward',
         Default = 0,
         Min = -30,
         Max = 30,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) RB.SkyboxBulletCustomForward = v end
     })
 
-    local RBHSL = Tabs.Combat:AddRightGroupbox('Hit Sounds & Logs')
+    local RBHSL = Tabs.Combat:Section({Name = 'Hit Sounds & Logs', Side = 'Right'})
 
-    RBHSL:AddToggle('RageSoundsToggle', {
-        Text = 'Enable Hitsounds',
+    RBHSL:Toggle({Flag = 'RageSoundsToggle', 
+        Name = 'Enable Hitsounds',
         Default = false,
         Callback = function(v)
             HSett.On = v
             if v then UpdHSound() end
         end
     })
-    RBHSL:AddDropdown('RageSoundMethod', {
-        Values = {'Hit Check', 'ID Swap'},
+    RBHSL:Dropdown({Flag = 'RageSoundMethod', 
+        Options = {'Hit Check', 'ID Swap'},
         Default = 1,
         Multi = false,
-        Text = 'Hitsound Method',
+        Name = 'Hitsound Method',
         Callback = function(v) HSett.Method = v; UpdHSound() end
     })
-    RBHSL:AddDropdown('RageSoundType', {
-        Values = {'Rust','CODE200','Minecraft','Neverlose','Gamesense','Bonk','Bat','Laser Beam','Fatality','Bow','koch','golda','agpa1','agpa2','Boink','TF2','CSGO','Hitmarker','Fortnite'},
+    RBHSL:Dropdown({Flag = 'RageSoundType', 
+        Options = {'Rust','CODE200','Minecraft','Neverlose','Gamesense','Bonk','Bat','Laser Beam','Fatality','Bow','koch','golda','agpa1','agpa2','Boink','TF2','CSGO','Hitmarker','Fortnite'},
         Default = 1,
         Multi = false,
-        Text = 'Sound Type',
+        Name = 'Sound Type',
         Callback = function(v) HSett.SoundId = HitSounds[v] or HitSounds["Rust"]; UpdHSound() end
     })
-    RBHSL:AddSlider('RageSoundVolume', {
-        Text = 'Volume',
+    RBHSL:Slider({Flag = 'RageSoundVolume', 
+        Name = 'Volume',
         Default = 1,
         Min = 0,
         Max = 10,
-        Rounding = 1,
+        Decimal = 0.1,
         Callback = function(v) HSett.Vol = v; UpdHSound() end
     })
     RBHSL:AddButton('Preview Hitsound', function()
@@ -3192,20 +3201,20 @@ do
         PlayHSound(true)
     end)
 
-    RBHSL:AddToggle('RageHitLogToggle', {
-        Text = 'Hit Log',
+    RBHSL:Toggle({Flag = 'RageHitLogToggle', 
+        Name = 'Hit Log',
         Default = false,
         Callback = function(v) HitLogSett.On = v end
     })
-    RBHSL:AddDropdown('RageHitLogMethod', {
-        Values = {'Middle', 'Library'},
+    RBHSL:Dropdown({Flag = 'RageHitLogMethod', 
+        Options = {'Middle', 'Library'},
         Default = 1,
         Multi = false,
-        Text = 'Hit Log Method',
+        Name = 'Hit Log Method',
         Callback = function(v) HitLogSett.Method = v end
     })
 
-    local SA = Tabs.Combat:AddLeftGroupbox('Silent Aim')
+    local SA = Tabs.Combat:Section({Name = 'Silent Aim', Side = 'Left'})
     local SA_FovCircle = nil
     local SA_CurrentTarget = nil
     local SA_Task = nil
@@ -3320,7 +3329,7 @@ do
         local VisualizeEvent = ReplicatedStorage:FindFirstChild('Events2') and ReplicatedStorage.Events2:FindFirstChild('Visualize')
         local DamageEvent = ReplicatedStorage:FindFirstChild('Events') and ReplicatedStorage.Events:FindFirstChild('ZFKLF__H')
         if not VisualizeEvent or not DamageEvent then
-            Library:Notify('Silent Aim: Events not found', 3)
+            Notifications:Create({Name = 'Silent Aim: Events not found', LifeTime = 3})
             toggle_states.SilentAim = false
             return
         end
@@ -3350,7 +3359,7 @@ do
             end)
             if HSett.On then PlayHSound() end
         end)
-        Library:Notify('Silent Aim ON', 2)
+        Notifications:Create({Name = 'Silent Aim ON', LifeTime = 2})
     end
 
     local function SA_Stop()
@@ -3360,8 +3369,8 @@ do
         SA_UpdateCircle()
     end
 
-    SA:AddToggle('SilentAim', {
-        Text = 'Enable',
+    SA:Toggle({Flag = 'SilentAim', 
+        Name = 'Enable',
         Default = false,
         Callback = function(v)
             toggle_states.SilentAim = v
@@ -3372,13 +3381,13 @@ do
             end
         end
     })
-    SA:AddSlider('SA_Chance', {Text = 'Chance %', Default = 100, Min = 1, Max = 100, Rounding = 1, Callback = function(v) P.SilentAim_Chance = v end})
-    SA:AddSlider('SA_Fov', {Text = 'FOV', Default = 500, Min = 10, Max = 1000, Rounding = 1, Callback = function(v) P.SilentAim_Fov = v; SA_UpdateCircle() end})
-    SA:AddDropdown('SA_TargetPartMode', {Values = {'Closest', 'Random', 'Head', 'HumanoidRootPart', 'UpperTorso', 'LowerTorso'}, Default = 1, Multi = false, Text = 'Target Part', Callback = function(v) P.SilentAim_TargetPartMode = v end})
-    SA:AddToggle('SA_WallCheck', {Text = 'Wall Check', Default = false, Callback = function(v) P.SilentAim_WallCheck = v end})
-    SA:AddToggle('SA_CheckDowned', {Text = 'Check Downed', Default = false, Callback = function(v) P.SilentAim_CheckDowned = v end})
-    SA:AddToggle('SA_Draw', {
-        Text = 'Draw FOV',
+    SA:Slider({Flag = 'SA_Chance', Name = 'Chance %', Default = 100, Min = 1, Max = 100, Decimal = 0.1, Callback = function(v) P.SilentAim_Chance = v end})
+    SA:Slider({Flag = 'SA_Fov', Name = 'FOV', Default = 500, Min = 10, Max = 1000, Decimal = 0.1, Callback = function(v) P.SilentAim_Fov = v; SA_UpdateCircle() end})
+    SA:Dropdown({Flag = 'SA_TargetPartMode', Options = {'Closest', 'Random', 'Head', 'HumanoidRootPart', 'UpperTorso', 'LowerTorso'}, Default = 1, Multi = false, Name = 'Target Part', Callback = function(v) P.SilentAim_TargetPartMode = v end})
+    SA:Toggle({Flag = 'SA_WallCheck', Name = 'Wall Check', Default = false, Callback = function(v) P.SilentAim_WallCheck = v end})
+    SA:Toggle({Flag = 'SA_CheckDowned', Name = 'Check Downed', Default = false, Callback = function(v) P.SilentAim_CheckDowned = v end})
+    SA:Toggle({Flag = 'SA_Draw', 
+        Name = 'Draw FOV',
         Default = false,
         Callback = function(v)
             P.SilentAim_Draw = v
@@ -3404,107 +3413,106 @@ do
                     end)
                 end)
                 if not ok then
-                    Library:Notify('Drawing not supported', 2)
+                    Notifications:Create({Name = 'Drawing not supported', LifeTime = 2})
                     P.SilentAim_Draw = false
                 end
             end
         end
-    }):AddColorPicker('SA_DrawColor', {Default = Color3.fromRGB(255, 255, 255), Title = 'FOV Color', Callback = function(v) P.SilentAim_DrawColor = v; if SA_FovCircle then SA_FovCircle.Color = v end end})
-    local MeleeGrp = Tabs.Combat:AddRightGroupbox('Melee Aura')
+    }):Colorpicker({Flag = 'SA_DrawColor', Default = Color3.fromRGB(255, 255, 255), Title = 'FOV Color', Callback = function(v) P.SilentAim_DrawColor = v; if SA_FovCircle then SA_FovCircle.Color = v end end})
+    local MeleeGrp = Tabs.Combat:Section({Name = 'Melee Aura', Side = 'Right'})
 
-    local MeleeUpToggle = MeleeGrp:AddToggle('MeleeUp', {
-        Text = 'Enable Melee Aura',
+    local MeleeUpToggle = MeleeGrp:Toggle({Flag = 'MeleeUp', 
+        Name = 'Enable Melee Aura',
         Default = false,
         Callback = function(v)
-            if v then MeleeUp_Enable(); Library:Notify("Melee Aura ON", 2)
-            else MeleeUp_Disable(); Library:Notify("Melee Aura OFF", 2) end
+            if v then MeleeUp_Enable(); Notifications:Create({Name = "Melee Aura ON", LifeTime = 2})
+            else MeleeUp_Disable(); Notifications:Create({Name = "Melee Aura OFF", LifeTime = 2}) end
         end
     })
-    MeleeUpToggle:AddKeyPicker('MeleeUp', {
+    MeleeUpToggle:Keybind({Flag = 'MeleeUp', 
         Default = 'None',
-        SyncToggleState = true,
         Mode = 'Toggle',
-        Text = 'Melee Aura',
+        Name = 'Melee Aura',
         Callback = function() end
     })
-    MeleeGrp:AddSlider('MeleeUpDist', {
-        Text = 'Distance',
+    MeleeGrp:Slider({Flag = 'MeleeUpDist', 
+        Name = 'Distance',
         Default = 5,
         Min = 1,
         Max = 15,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.MeleeUp_Distance = v end
     })
-    MeleeGrp:AddDropdown('MeleeUpPart', {
-        Values = MeleeUp_Parts,
+    MeleeGrp:Dropdown({Flag = 'MeleeUpPart', 
+        Options = MeleeUp_Parts,
         Default = 1,
         Callback = function(v) P.MeleeUp_TargetPart = v end
     })
-    MeleeGrp:AddToggle('MeleeUpAnim', {
-        Text = 'Show Melee Animation',
+    MeleeGrp:Toggle({Flag = 'MeleeUpAnim', 
+        Name = 'Show Melee Animation',
         Default = false,
         Callback = function(v) P.MeleeUp_AnimEnabled = v end
     })
-    local AA = Tabs.Combat:AddRightGroupbox('Anti-Aim')
+    local AA = Tabs.Combat:Section({Name = 'Anti-Aim', Side = 'Right'})
 
-    AA:AddDropdown('AntiAimMode', {
-        Values = {'Off', 'Spin', 'Jitter'},
+    AA:Dropdown({Flag = 'AntiAimMode', 
+        Options = {'Off', 'Spin', 'Jitter'},
         Default = 1,
         Callback = function(v) _G.Pidors_AntiAimMode(v) end
     })
-    AA:AddSlider('AntiAimSpin', {
-        Text = 'Spin Speed',
+    AA:Slider({Flag = 'AntiAimSpin', 
+        Name = 'Spin Speed',
         Default = 100,
         Min = 1,
         Max = 2000,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.AntiAim_SpinSpeed = v end
     })
-    AA:AddSlider('AntiAimJitter', {
-        Text = 'Jitter Speed',
+    AA:Slider({Flag = 'AntiAimJitter', 
+        Name = 'Jitter Speed',
         Default = 50,
         Min = 1,
         Max = 500,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.AntiAim_JitterSpeed = v end
     })
 
-    local PepperGrp = Tabs.Combat:AddRightGroupbox('Pepper Spray')
+    local PepperGrp = Tabs.Combat:Section({Name = 'Pepper Spray', Side = 'Right'})
 
-    PepperGrp:AddToggle('PepperInf', {
-        Text = 'Infinite Pepper',
+    PepperGrp:Toggle({Flag = 'PepperInf', 
+        Name = 'Infinite Pepper',
         Default = false,
         Callback = function(v)
             _G.Pidors_Pepper(v, toggle_states.PepperAura or false)
             toggle_states.PepperInf = v
         end
     })
-    PepperGrp:AddToggle('PepperAura', {
-        Text = 'Pepper Aura',
+    PepperGrp:Toggle({Flag = 'PepperAura', 
+        Name = 'Pepper Aura',
         Default = false,
         Callback = function(v)
             _G.Pidors_Pepper(toggle_states.PepperInf or false, v)
             toggle_states.PepperAura = v
         end
     })
-    PepperGrp:AddSlider('PepperDist', {
-        Text = 'Distance',
+    PepperGrp:Slider({Flag = 'PepperDist', 
+        Name = 'Distance',
         Default = 5,
         Min = 1,
         Max = 15,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.Pepper_Distance = v end
     })
-    local ProjGrp = Tabs.Combat:AddRightGroupbox('Projectile Control')
+    local ProjGrp = Tabs.Combat:Section({Name = 'Projectile Control', Side = 'Right'})
 
-    local tC4 = ProjGrp:AddToggle('C4Control', {
-        Text = 'C4 Control',
+    local tC4 = ProjGrp:Toggle({Flag = 'C4Control', 
+        Name = 'C4 Control',
         Default = false,
         Callback = function(v)
             if v then
                 local _vparts = Workspace.Debris:WaitForChild("VParts")
                 connection_table.C4Control = _vparts.ChildAdded:Connect(function(proj)
-                    if not Toggles.C4Control or not Toggles.C4Control.Value then return end
+                    if not Flags.C4Control or not Flags.C4Control then return end
                     if proj.Name ~= "TransIgnore" then return end
                     task.wait()
                     if not LocalPlayer.Character then return end
@@ -3530,11 +3538,11 @@ do
                     BG.P = 9e4
                     BG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
                     task.spawn(function()
-                        while proj and proj.Parent and Toggles.C4Control.Value do
+                        while proj and proj.Parent and Flags.C4Control do
                             RunService.RenderStepped:Wait()
                             local speed
-                            if Options.C4Speed then
-                                speed = Options.C4Speed.Value
+                            if Flags.C4Speed then
+                                speed = Flags.C4Speed
                             else
                                 speed = 200
                             end
@@ -3578,30 +3586,29 @@ do
             end
         end
     })
-    tC4:AddKeyPicker('C4Key', {
-        Text = 'C4 Control Key',
+    tC4:Keybind({Flag = 'C4Key', 
+        Name = 'C4 Control Key',
         Default = 'None',
         Mode = 'Toggle',
-        SyncToggleState = true,
         Callback = function() end
     })
-    ProjGrp:AddSlider('C4Speed', {
-        Text = 'C4 Speed',
+    ProjGrp:Slider({Flag = 'C4Speed', 
+        Name = 'C4 Speed',
         Default = 200,
         Min = 10,
         Max = 500,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) end
     })
 
-    local tExplosives = ProjGrp:AddToggle('ExplosivesControl', {
-        Text = 'Explosives Control',
+    local tExplosives = ProjGrp:Toggle({Flag = 'ExplosivesControl', 
+        Name = 'Explosives Control',
         Default = false,
         Callback = function(v)
             if v then
                 local _vparts = Workspace.Debris:WaitForChild("VParts")
                 connection_table.ExplosivesControl = _vparts.ChildAdded:Connect(function(proj)
-                    if not Toggles.ExplosivesControl or not Toggles.ExplosivesControl.Value then return end
+                    if not Flags.ExplosivesControl or not Flags.ExplosivesControl then return end
                     local isRPG = proj.Name == "RPG_Rocket" or proj.Name == "GrenadeLauncherGrenade"
                     if not isRPG then return end
                     task.wait()
@@ -3627,11 +3634,11 @@ do
                     BG.P = 9e4
                     BG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
                     task.spawn(function()
-                        while proj and proj.Parent and Toggles.ExplosivesControl.Value do
+                        while proj and proj.Parent and Flags.ExplosivesControl do
                             RunService.RenderStepped:Wait()
                             local speed
-                            if Options.ExplosivesSpeed then
-                                speed = Options.ExplosivesSpeed.Value
+                            if Flags.ExplosivesSpeed then
+                                speed = Flags.ExplosivesSpeed
                             else
                                 speed = 200
                             end
@@ -3675,47 +3682,46 @@ do
             end
         end
     })
-    tExplosives:AddKeyPicker('ExplosivesKey', {
-        Text = 'Explosives Control Key',
+    tExplosives:Keybind({Flag = 'ExplosivesKey', 
+        Name = 'Explosives Control Key',
         Default = 'None',
         Mode = 'Toggle',
-        SyncToggleState = true,
         Callback = function() end
     })
-    ProjGrp:AddSlider('ExplosivesSpeed', {
-        Text = 'Explosives Speed',
+    ProjGrp:Slider({Flag = 'ExplosivesSpeed', 
+        Name = 'Explosives Speed',
         Default = 200,
         Min = 10,
         Max = 500,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) end
     })
 
-    local Guns = Tabs.Combat:AddLeftGroupbox('Gun Mods')
+    local Guns = Tabs.Combat:Section({Name = 'Gun Mods', Side = 'Left'})
 
-    Guns:AddToggle('NoRecoil', {
-        Text = 'No Recoil',
+    Guns:Toggle({Flag = 'NoRecoil', 
+        Name = 'No Recoil',
         Default = false,
         Callback = function(v)
-            if v then NoRecoil_Enable(); Library:Notify("No Recoil ON", 2)
-            else NoRecoil_Disable(); Library:Notify("No Recoil OFF", 2) end
+            if v then NoRecoil_Enable(); Notifications:Create({Name = "No Recoil ON", LifeTime = 2})
+            else NoRecoil_Disable(); Notifications:Create({Name = "No Recoil OFF", LifeTime = 2}) end
         end
     })
-    Guns:AddToggle('AutoFire', {
-        Text = 'Auto Fire Mode',
+    Guns:Toggle({Flag = 'AutoFire', 
+        Name = 'Auto Fire Mode',
         Default = false,
         Callback = function(v)
-            if v then AutoFireMode_Enable(); Library:Notify("Auto Fire ON", 2)
-            else AutoFireMode_Disable(); Library:Notify("Auto Fire OFF", 2) end
+            if v then AutoFireMode_Enable(); Notifications:Create({Name = "Auto Fire ON", LifeTime = 2})
+            else AutoFireMode_Disable(); Notifications:Create({Name = "Auto Fire OFF", LifeTime = 2}) end
         end
     })
-    Guns:AddToggle('AutoReload', {
-        Text = 'Auto Reload',
+    Guns:Toggle({Flag = 'AutoReload', 
+        Name = 'Auto Reload',
         Default = false,
         Callback = function(state)
             _G.Pidors_AutoReload = state
             local reload_event = ReplicatedStorage.Events:FindFirstChild("GNX_R")
-            if not reload_event then                Library:Notify("Auto Reload: event not found", 3); return            end            if not state then return end
+            if not reload_event then                Notifications:Create({Name = "Auto Reload: event not found", LifeTime = 3}); return            end            if not state then return end
             local function setup_reload(tool)
                 if not tool or not tool:FindFirstChild("IsGun") then return end
                 local ammo = tool:FindFirstChild("Values") and tool.Values:FindFirstChild("SERVER_Ammo")
@@ -3763,10 +3769,10 @@ do
 end
 
 do
-    local Safe = Tabs.Visuals:AddLeftGroupbox('Safe / Register ESP')
+    local Safe = Tabs.Visuals:Section({Name = 'Safe / Register ESP', Side = 'Left'})
 
-    Safe:AddToggle('BredMakurz', {
-        Text = 'Safe/Register ESP',
+    Safe:Toggle({Flag = 'BredMakurz', 
+        Name = 'Safe/Register ESP',
         Default = false,
         Callback = function(v)
             _G.Pidors_BredMakurz(v)
@@ -3774,22 +3780,22 @@ do
             if v then
                 _notify_msg = "Safe ESP ON" else _notify_msg = "Safe ESP OFF"
             end
-            Library:Notify(_notify_msg, 2)
+            Notifications:Create({Name = _notify_msg, LifeTime = 2})
         end
     })
-    Safe:AddSlider('BredMakurzDist', {
-        Text = 'Distance',
+    Safe:Slider({Flag = 'BredMakurzDist', 
+        Name = 'Distance',
         Default = 200,
         Min = 50,
         Max = 1500,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) _G.Pidors_BredMakurz_Distance(v) end
     })
 
-    local PEsp = Tabs.Visuals:AddRightGroupbox('Player ESP')
+    local PEsp = Tabs.Visuals:Section({Name = 'Player ESP', Side = 'Right'})
 
-    PEsp:AddToggle('ESP', {
-        Text = 'Enable ESP',
+    PEsp:Toggle({Flag = 'ESP', 
+        Name = 'Enable ESP',
         Default = false,
         Callback = function(v)
             P.ESP_Enabled = v
@@ -3798,41 +3804,41 @@ do
             if v then
                 _notify_msg = "Player ESP ON" else _notify_msg = "Player ESP OFF"
             end
-            Library:Notify(_notify_msg, 2)
+            Notifications:Create({Name = _notify_msg, LifeTime = 2})
         end
     })
-    local tBoxes = PEsp:AddToggle('ESPBoxes', { Text = 'Boxes', Default = false, Callback = function(v) P.ESP_Boxes = v end })
-    tBoxes:AddColorPicker('ESPBoxColor', { Default = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_BoxColor = v end })
-    local tNames = PEsp:AddToggle('ESPNaming', { Text = 'Names', Default = false, Callback = function(v) P.ESP_Names = v end })
-    tNames:AddColorPicker('ESPNameColor', { Default = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_NameColor = v end })
-    local tDist = PEsp:AddToggle('ESPDist', { Text = 'Distance', Default = false, Callback = function(v) P.ESP_Distance = v end })
-    tDist:AddColorPicker('ESPDistColor', { Default = Color3.fromRGB(180,180,180), Callback = function(v) P.ESP_DistColor = v end })
-    PEsp:AddToggle('ESPHealth', { Text = 'Health Bar', Default = false, Callback = function(v) P.ESP_Health = v end })
-    local tTracers = PEsp:AddToggle('ESPTracers', { Text = 'Player Tracers', Default = false, Callback = function(v) P.ESP_Tracers = v end })
-    tTracers:AddColorPicker('ESPTracerColor', { Default = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_TracerColor = v end })
-    PEsp:AddDropdown('ESPTracerOrigin', {
-        Values = {'Bottom', 'Center', 'Mouse'},
+    local tBoxes = PEsp:Toggle({Flag = 'ESPBoxes',  Name = 'Boxes', Default = false, Callback = function(v) P.ESP_Boxes = v end })
+    tBoxes:Colorpicker({Flag = 'ESPBoxColor',  Color = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_BoxColor = v end })
+    local tNames = PEsp:Toggle({Flag = 'ESPNaming',  Name = 'Names', Default = false, Callback = function(v) P.ESP_Names = v end })
+    tNames:Colorpicker({Flag = 'ESPNameColor',  Color = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_NameColor = v end })
+    local tDist = PEsp:Toggle({Flag = 'ESPDist',  Name = 'Distance', Default = false, Callback = function(v) P.ESP_Distance = v end })
+    tDist:Colorpicker({Flag = 'ESPDistColor',  Color = Color3.fromRGB(180,180,180), Callback = function(v) P.ESP_DistColor = v end })
+    PEsp:Toggle({Flag = 'ESPHealth',  Name = 'Health Bar', Default = false, Callback = function(v) P.ESP_Health = v end })
+    local tTracers = PEsp:Toggle({Flag = 'ESPTracers',  Name = 'Player Tracers', Default = false, Callback = function(v) P.ESP_Tracers = v end })
+    tTracers:Colorpicker({Flag = 'ESPTracerColor',  Color = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_TracerColor = v end })
+    PEsp:Dropdown({Flag = 'ESPTracerOrigin', 
+        Options = {'Bottom', 'Center', 'Mouse'},
         Default = 1,
         Callback = function(v) P.ESP_TracerOrigin = v end
     })
-    local tChams = PEsp:AddToggle('ESPChams', { Text = 'Chams (Highlight)', Default = false, Callback = function(v) P.ESP_Chams = v end })
-    tChams:AddColorPicker('ESPChamsColor', { Default = Color3.fromRGB(255,0,0), Callback = function(v) P.ESP_ChamsFill = v end })
-    tChams:AddColorPicker('ESPChamsOutlineColor', { Default = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_ChamsOutline = v end })
-    local tSkel = PEsp:AddToggle('ESPSkeleton', { Text = 'Skeleton', Default = false, Callback = function(v) P.ESP_Skeleton = v end })
-    tSkel:AddColorPicker('ESPSkelColor', { Default = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_SkelColor = v end })
-    local tTool = PEsp:AddToggle('ESPTool', { Text = 'Equipped Tool', Default = false, Callback = function(v) P.ESP_Tool = v end })
-    tTool:AddColorPicker('ESPToolColor', { Default = Color3.fromRGB(200,200,200), Callback = function(v) P.ESP_ToolColor = v end })
-    PEsp:AddSlider('ESPMaxDist', {
-        Text = 'Max Render Distance',
+    local tChams = PEsp:Toggle({Flag = 'ESPChams',  Name = 'Chams (Highlight)', Default = false, Callback = function(v) P.ESP_Chams = v end })
+    tChams:Colorpicker({Flag = 'ESPChamsColor',  Color = Color3.fromRGB(255,0,0), Callback = function(v) P.ESP_ChamsFill = v end })
+    tChams:Colorpicker({Flag = 'ESPChamsOutlineColor',  Color = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_ChamsOutline = v end })
+    local tSkel = PEsp:Toggle({Flag = 'ESPSkeleton',  Name = 'Skeleton', Default = false, Callback = function(v) P.ESP_Skeleton = v end })
+    tSkel:Colorpicker({Flag = 'ESPSkelColor',  Color = Color3.fromRGB(255,255,255), Callback = function(v) P.ESP_SkelColor = v end })
+    local tTool = PEsp:Toggle({Flag = 'ESPTool',  Name = 'Equipped Tool', Default = false, Callback = function(v) P.ESP_Tool = v end })
+    tTool:Colorpicker({Flag = 'ESPToolColor',  Color = Color3.fromRGB(200,200,200), Callback = function(v) P.ESP_ToolColor = v end })
+    PEsp:Slider({Flag = 'ESPMaxDist', 
+        Name = 'Max Render Distance',
         Default = 500,
         Min = 100,
         Max = 5000,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) P.ESP_MaxDist = v end
     })
     PEsp:AddLabel('')
-    PEsp:AddToggle('ArmsChams', {
-        Text = 'Arms Chams',
+    PEsp:Toggle({Flag = 'ArmsChams', 
+        Name = 'Arms Chams',
         Default = false,
         Callback = function(state)
             local viewModel = Workspace.CurrentCamera:FindFirstChild("ViewModel")
@@ -3862,8 +3868,8 @@ do
             end)
         end
     })
-    PEsp:AddToggle('Chat', {
-        Text = 'Chat',
+    PEsp:Toggle({Flag = 'Chat', 
+        Name = 'Chat',
         Default = false,
         Callback = function(state)
             _G.Pidors_Chat = state
@@ -3877,42 +3883,42 @@ do
 end
 
 do
-    local WorldGrp = Tabs.World:AddLeftGroupbox('World')
+    local WorldGrp = Tabs.World:Section({Name = 'World', Side = 'Left'})
 
-    WorldGrp:AddToggle('Fullbright', {
-        Text = 'Fullbright',
+    WorldGrp:Toggle({Flag = 'Fullbright', 
+        Name = 'Fullbright',
         Default = false,
         Callback = function(v)
-            if v then FullBright_Enable(); Library:Notify("Fullbright ON", 2)
-            else FullBright_Disable(); Library:Notify("Fullbright OFF", 2) end
+            if v then FullBright_Enable(); Notifications:Create({Name = "Fullbright ON", LifeTime = 2})
+            else FullBright_Disable(); Notifications:Create({Name = "Fullbright OFF", LifeTime = 2}) end
         end
     })
-    WorldGrp:AddToggle('AutoDoors', {
-        Text = 'Auto Open/Unlock Doors',
+    WorldGrp:Toggle({Flag = 'AutoDoors', 
+        Name = 'Auto Open/Unlock Doors',
         Default = false,
         Callback = function(v)
-            if v then OpenNearbyDoors_Enable(); UnlockNearbyDoors_Enable(); Library:Notify("Auto Doors ON", 2)
-            else OpenNearbyDoors_Disable(); UnlockNearbyDoors_Disable(); Library:Notify("Auto Doors OFF", 2) end
+            if v then OpenNearbyDoors_Enable(); UnlockNearbyDoors_Enable(); Notifications:Create({Name = "Auto Doors ON", LifeTime = 2})
+            else OpenNearbyDoors_Disable(); UnlockNearbyDoors_Disable(); Notifications:Create({Name = "Auto Doors OFF", LifeTime = 2}) end
         end
     })
-    WorldGrp:AddToggle('FastPickup', {
-        Text = 'Fast Pickup',
+    WorldGrp:Toggle({Flag = 'FastPickup', 
+        Name = 'Fast Pickup',
         Default = false,
         Callback = function(v)
-            if v then FastInteract_Enable(); Library:Notify("Fast Pickup ON", 2)
-            else FastInteract_Disable(); Library:Notify("Fast Pickup OFF", 2) end
+            if v then FastInteract_Enable(); Notifications:Create({Name = "Fast Pickup ON", LifeTime = 2})
+            else FastInteract_Disable(); Notifications:Create({Name = "Fast Pickup OFF", LifeTime = 2}) end
         end
     })
-    WorldGrp:AddToggle('AutoMoney', {
-        Text = 'Auto Pickup Money',
+    WorldGrp:Toggle({Flag = 'AutoMoney', 
+        Name = 'Auto Pickup Money',
         Default = false,
         Callback = function(v)
-            if v then AutoPickupMoney_Enable(); Library:Notify("Auto Money ON", 2)
-            else AutoPickupMoney_Disable(); Library:Notify("Auto Money OFF", 2) end
+            if v then AutoPickupMoney_Enable(); Notifications:Create({Name = "Auto Money ON", LifeTime = 2})
+            else AutoPickupMoney_Disable(); Notifications:Create({Name = "Auto Money OFF", LifeTime = 2}) end
         end
     })
-    WorldGrp:AddToggle('SliderSpam', {
-        Text = 'Slider Spam',
+    WorldGrp:Toggle({Flag = 'SliderSpam', 
+        Name = 'Slider Spam',
         Default = false,
         Tooltip = 'Spamming slide sound (server side)',
         Callback = function(state)
@@ -3929,8 +3935,8 @@ do
             end)
         end
     })
-    WorldGrp:AddToggle('AntiBarbwire', {
-        Text = 'Anti Barbwire',
+    WorldGrp:Toggle({Flag = 'AntiBarbwire', 
+        Name = 'Anti Barbwire',
         Default = false,
         Tooltip = 'Removes Barbwire',
         Callback = function(state)
@@ -3952,8 +3958,8 @@ do
             end
         end
     })
-    WorldGrp:AddToggle('AutoPickupScraps', {
-        Text = 'Auto Pickup Scraps',
+    WorldGrp:Toggle({Flag = 'AutoPickupScraps', 
+        Name = 'Auto Pickup Scraps',
         Default = false,
         Callback = function(state)
             toggle_states.AutoPickupScraps = state
@@ -3993,8 +3999,8 @@ do
             end
         end
     })
-    WorldGrp:AddToggle('AutoPickupTools', {
-        Text = 'Auto Pickup Tools',
+    WorldGrp:Toggle({Flag = 'AutoPickupTools', 
+        Name = 'Auto Pickup Tools',
         Default = false,
         Callback = function(state)
             toggle_states.AutoPickupTools = state
@@ -4041,8 +4047,8 @@ do
             end
         end
     })
-    WorldGrp:AddToggle('AutoPickupCrates', {
-        Text = 'Auto Pickup Crates',
+    WorldGrp:Toggle({Flag = 'AutoPickupCrates', 
+        Name = 'Auto Pickup Crates',
         Default = false,
         Callback = function(state)
             toggle_states.AutoPickupCrates = state
@@ -4083,10 +4089,10 @@ do
         end
     })
 
-    local AmbianceGrp = Tabs.World:AddLeftGroupbox('Ambiance')
+    local AmbianceGrp = Tabs.World:Section({Name = 'Ambiance', Side = 'Left'})
 
-    local tAmbiance = AmbianceGrp:AddToggle('AmbianceToggle', {
-        Text = 'Enable Ambiance',
+    local tAmbiance = AmbianceGrp:Toggle({Flag = 'AmbianceToggle', 
+        Name = 'Enable Ambiance',
         Default = false,
         Callback = function(v)
             if v then
@@ -4094,7 +4100,7 @@ do
                 cc.Name = "CustomAmbiance"
                 cc.Enabled = true
                 connection_table.Ambiance = RunService.RenderStepped:Connect(function()
-                    if not Toggles.AmbianceToggle or not Toggles.AmbianceToggle.Value then return end
+                    if not Flags.AmbianceToggle or not Flags.AmbianceToggle then return end
                     local col = P.AmbianceColor or Color3.fromRGB(255,255,255)
                     cc.TintColor = col
                     Lighting.Ambient = col
@@ -4114,7 +4120,7 @@ do
             end
         end
     })
-    tAmbiance:AddColorPicker('AmbianceColor', { Default = Color3.fromRGB(255,255,255), Callback = function(v)
+    tAmbiance:Colorpicker({Flag = 'AmbianceColor',  Color = Color3.fromRGB(255,255,255), Callback = function(v)
         P.AmbianceColor = v
         local cc = Lighting:FindFirstChild("CustomAmbiance")
         if cc and cc.Enabled then
@@ -4123,12 +4129,12 @@ do
             Lighting.OutdoorAmbient = v
         end
     end })
-    AmbianceGrp:AddSlider('AmbianceTime', {
-        Text = 'Time Of Day',
+    AmbianceGrp:Slider({Flag = 'AmbianceTime', 
+        Name = 'Time Of Day',
         Default = 12,
         Min = 0,
         Max = 24,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v)
             P.AmbianceTime = v
             local cc = Lighting:FindFirstChild("CustomAmbiance")
@@ -4137,12 +4143,12 @@ do
             end
         end
     })
-    AmbianceGrp:AddSlider('AmbianceBrightness', {
-        Text = 'Brightness',
+    AmbianceGrp:Slider({Flag = 'AmbianceBrightness', 
+        Name = 'Brightness',
         Default = 2,
         Min = 0,
         Max = 10,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v)
             P.AmbianceBrightness = v
             local cc = Lighting:FindFirstChild("CustomAmbiance")
@@ -4151,8 +4157,8 @@ do
             end
         end
     })
-    AmbianceGrp:AddToggle('NoFog', {
-        Text = 'No Fog',
+    AmbianceGrp:Toggle({Flag = 'NoFog', 
+        Name = 'No Fog',
         Default = false,
         Callback = function(v)
             if v then
@@ -4165,8 +4171,8 @@ do
             end
         end
     })
-    local tBloom = AmbianceGrp:AddToggle('BloomToggle', {
-        Text = 'Enable Bloom',
+    local tBloom = AmbianceGrp:Toggle({Flag = 'BloomToggle', 
+        Name = 'Enable Bloom',
         Default = false,
         Callback = function(v)
             local b = Lighting:FindFirstChild("CustomBloom") or Instance.new("BloomEffect", Lighting)
@@ -4181,12 +4187,12 @@ do
             end
         end
     })
-    AmbianceGrp:AddSlider('BloomIntensity', {
-        Text = 'Bloom Intensity',
+    AmbianceGrp:Slider({Flag = 'BloomIntensity', 
+        Name = 'Bloom Intensity',
         Default = 1,
         Min = 0,
         Max = 10,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v)
             P.BloomIntensity = v
             local b = Lighting:FindFirstChild("CustomBloom")
@@ -4195,12 +4201,12 @@ do
             end
         end
     })
-    AmbianceGrp:AddSlider('BloomSize', {
-        Text = 'Bloom Size',
+    AmbianceGrp:Slider({Flag = 'BloomSize', 
+        Name = 'Bloom Size',
         Default = 23,
         Min = 0,
         Max = 56,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v)
             P.BloomSize = v
             local b = Lighting:FindFirstChild("CustomBloom")
@@ -4209,12 +4215,12 @@ do
             end
         end
     })
-    AmbianceGrp:AddSlider('BloomThreshold', {
-        Text = 'Bloom Threshold',
+    AmbianceGrp:Slider({Flag = 'BloomThreshold', 
+        Name = 'Bloom Threshold',
         Default = 2,
         Min = 0,
         Max = 10,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v)
             P.BloomThreshold = v
             local b = Lighting:FindFirstChild("CustomBloom")
@@ -4225,16 +4231,16 @@ do
     })
 
     AmbianceGrp:AddLabel('')
-    local tPlayerRig = AmbianceGrp:AddToggle('PlayerRigToggle', {
-        Text = 'Modify Player Rig',
+    local tPlayerRig = AmbianceGrp:Toggle({Flag = 'PlayerRigToggle', 
+        Name = 'Modify Player Rig',
         Default = false,
         Callback = function(v)
             if v then
                 connection_table.PlayerRig = RunService.RenderStepped:Connect(function()
-                    if not Toggles.PlayerRigToggle or not Toggles.PlayerRigToggle.Value then return end
+                    if not Flags.PlayerRigToggle or not Flags.PlayerRigToggle then return end
                     if not LocalPlayer.Character then return end
-                    local mat = Enum.Material[Options.PlayerRigMaterial.Value]
-                    local col = Options.PlayerRigColor.Value
+                    local mat = Enum.Material[Flags.PlayerRigMaterial]
+                    local col = Flags.PlayerRigColor
                     local tool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
                     local _iter_p = LocalPlayer.Character:GetDescendants()
                     for _, p in pairs(_iter_p) do
@@ -4271,54 +4277,54 @@ do
             end
         end
     })
-    tPlayerRig:AddColorPicker('PlayerRigColor', { Default = Color3.fromRGB(128, 0, 128), Callback = function(v) end })
-    AmbianceGrp:AddLabel('Player Rig Material')
-    AmbianceGrp:AddDropdown('PlayerRigMaterial', {
-        Values = {'ForceField','Neon','Plastic','SmoothPlastic','Glass','Foil','Metal','Wood'},
+    tPlayerRig:Colorpicker({Flag = 'PlayerRigColor',  Color = Color3.fromRGB(128, 0, 128), Callback = function(v) end })
+    AmbianceGrp:Label({Name = 'Player Rig Material'})
+    AmbianceGrp:Dropdown({Flag = 'PlayerRigMaterial', 
+        Options = {'ForceField','Neon','Plastic','SmoothPlastic','Glass','Foil','Metal','Wood'},
         Default = 1,
         Callback = function(v) end
     })
 
-    local WESP = Tabs.Visuals:AddRightGroupbox('World ESP')
+    local WESP = Tabs.Visuals:Section({Name = 'World ESP', Side = 'Right'})
 
-    local tWDealers = WESP:AddToggle('WESPDealers', { Text = 'Dealers (Shop)', Default = false, Callback = function(v) P.WESP_Dealers = v end })
-    tWDealers:AddColorPicker('WESPDealerColor', { Default = Color3.fromRGB(255,200,0), Callback = function(v) P.WESP_DealerColor = v end })
-    local tWCash = WESP:AddToggle('WESPCash', { Text = 'Dropped Cash', Default = false, Callback = function(v) P.WESP_Cash = v end })
-    tWCash:AddColorPicker('WESPCashColor', { Default = Color3.fromRGB(0,255,0), Callback = function(v) P.WESP_CashColor = v end })
-    local tWItems = WESP:AddToggle('WESPItems', { Text = 'Dropped Items', Default = false, Callback = function(v) P.WESP_Items = v end })
-    tWItems:AddColorPicker('WESPItemColor', { Default = Color3.fromRGB(0,150,255), Callback = function(v) P.WESP_ItemColor = v end })
-    local tWAlarms = WESP:AddToggle('WESPAlarms', { Text = 'Alarms', Default = false, Callback = function(v) P.WESP_Alarms = v end })
-    tWAlarms:AddColorPicker('WESPAlarmColor', { Default = Color3.fromRGB(255,50,50), Callback = function(v) P.WESP_AlarmColor = v end })
-    local tWATMs = WESP:AddToggle('WESPATMs', { Text = 'ATMs', Default = false, Callback = function(v) P.WESP_ATMs = v end })
-    tWATMs:AddColorPicker('WESPATMColor', { Default = Color3.fromRGB(200,0,255), Callback = function(v) P.WESP_ATMColor = v end })
-    local tWMystery = WESP:AddToggle('WESPMystery', { Text = 'Mystery Boxes', Default = false, Callback = function(v) P.WESP_Mystery = v end })
-    tWMystery:AddColorPicker('WESPMysteryColor', { Default = Color3.fromRGB(255,100,200), Callback = function(v) P.WESP_MysteryColor = v end })
-    local tWPiles = WESP:AddToggle('WESPPiles', { Text = 'Lootable Piles', Default = false, Callback = function(v) P.WESP_Piles = v end })
-    tWPiles:AddColorPicker('WESPPileColor', { Default = Color3.fromRGB(0,255,255), Callback = function(v) P.WESP_PileColor = v end })
+    local tWDealers = WESP:Toggle({Flag = 'WESPDealers',  Name = 'Dealers (Shop)', Default = false, Callback = function(v) P.WESP_Dealers = v end })
+    tWDealers:Colorpicker({Flag = 'WESPDealerColor',  Color = Color3.fromRGB(255,200,0), Callback = function(v) P.WESP_DealerColor = v end })
+    local tWCash = WESP:Toggle({Flag = 'WESPCash',  Name = 'Dropped Cash', Default = false, Callback = function(v) P.WESP_Cash = v end })
+    tWCash:Colorpicker({Flag = 'WESPCashColor',  Color = Color3.fromRGB(0,255,0), Callback = function(v) P.WESP_CashColor = v end })
+    local tWItems = WESP:Toggle({Flag = 'WESPItems',  Name = 'Dropped Items', Default = false, Callback = function(v) P.WESP_Items = v end })
+    tWItems:Colorpicker({Flag = 'WESPItemColor',  Color = Color3.fromRGB(0,150,255), Callback = function(v) P.WESP_ItemColor = v end })
+    local tWAlarms = WESP:Toggle({Flag = 'WESPAlarms',  Name = 'Alarms', Default = false, Callback = function(v) P.WESP_Alarms = v end })
+    tWAlarms:Colorpicker({Flag = 'WESPAlarmColor',  Color = Color3.fromRGB(255,50,50), Callback = function(v) P.WESP_AlarmColor = v end })
+    local tWATMs = WESP:Toggle({Flag = 'WESPATMs',  Name = 'ATMs', Default = false, Callback = function(v) P.WESP_ATMs = v end })
+    tWATMs:Colorpicker({Flag = 'WESPATMColor',  Color = Color3.fromRGB(200,0,255), Callback = function(v) P.WESP_ATMColor = v end })
+    local tWMystery = WESP:Toggle({Flag = 'WESPMystery',  Name = 'Mystery Boxes', Default = false, Callback = function(v) P.WESP_Mystery = v end })
+    tWMystery:Colorpicker({Flag = 'WESPMysteryColor',  Color = Color3.fromRGB(255,100,200), Callback = function(v) P.WESP_MysteryColor = v end })
+    local tWPiles = WESP:Toggle({Flag = 'WESPPiles',  Name = 'Lootable Piles', Default = false, Callback = function(v) P.WESP_Piles = v end })
+    tWPiles:Colorpicker({Flag = 'WESPPileColor',  Color = Color3.fromRGB(0,255,255), Callback = function(v) P.WESP_PileColor = v end })
 end
 
 do
-    local MiscGrp = Tabs.Misc:AddLeftGroupbox('Utility')
+    local MiscGrp = Tabs.Misc:Section({Name = 'Utility', Side = 'Left'})
 
     MiscGrp:AddButton('Copy Discord Invite', function()
         setclipboard("https://discord.com/invite/3UQHUVsAAu")
-        Library:Notify("Discord invite copied!", 2)
+        Notifications:Create({Name = "Discord invite copied!", LifeTime = 2})
     end)
 
-    local tSpeedHack = MiscGrp:AddToggle('SpeedHack', {
-        Text = 'Speed Hack',
+    local tSpeedHack = MiscGrp:Toggle({Flag = 'SpeedHack', 
+        Name = 'Speed Hack',
         Default = false,
         Callback = function(v)
             _G.Pidors_SpeedHack = v
-            Library:Notify(v and "Speed Hack ON" or "Speed Hack OFF", 2)
+            Notifications:Create({Name = v and "Speed Hack ON" or "Speed Hack OFF", LifeTime = 2})
         end
     })
-    MiscGrp:AddSlider('SpeedHackValue', {
-        Text = 'Speed',
+    MiscGrp:Slider({Flag = 'SpeedHackValue', 
+        Name = 'Speed',
         Default = 16,
         Min = 10,
         Max = 50,
-        Rounding = 0,
+        Decimal = 1,
         Callback = function(v) _G.Pidors_SpeedHackValue = v end
     })
 
@@ -4333,8 +4339,8 @@ do
         end
     end)
 
-    MiscGrp:AddToggle('FakeDowned', {
-        Text = 'Fake Downed',
+    MiscGrp:Toggle({Flag = 'FakeDowned', 
+        Name = 'Fake Downed',
         Default = false,
         Callback = function(v)
             local charStats = game:GetService("ReplicatedStorage"):FindFirstChild('CharStats')
@@ -4347,12 +4353,12 @@ do
                     end
                 end
             end
-            Library:Notify(v and "Fake Downed ON" or "Fake Downed OFF", 2)
+            Notifications:Create({Name = v and "Fake Downed ON" or "Fake Downed OFF", LifeTime = 2})
         end
     })
 
-    MiscGrp:AddToggle('NoSpike', {
-        Text = 'No Spike',
+    MiscGrp:Toggle({Flag = 'NoSpike', 
+        Name = 'No Spike',
         Default = false,
         Callback = function(v)
             _G.Pidors_NoSpike = v
@@ -4363,7 +4369,7 @@ do
                         obj.CanQuery = false
                     end
                 end
-                Library:Notify("No Spike ON", 2)
+                Notifications:Create({Name = "No Spike ON", LifeTime = 2})
             else
                 for _, obj in ipairs(Workspace:GetDescendants()) do
                     if obj:IsA("MeshPart") and obj.Name == "Spike" then
@@ -4371,7 +4377,7 @@ do
                         obj.CanQuery = true
                     end
                 end
-                Library:Notify("No Spike OFF", 2)
+                Notifications:Create({Name = "No Spike OFF", LifeTime = 2})
             end
         end
     })
@@ -4383,8 +4389,8 @@ do
         end
     end)
 
-    MiscGrp:AddToggle('NoJumpDelay', {
-        Text = 'No Jump Delay',
+    MiscGrp:Toggle({Flag = 'NoJumpDelay', 
+        Name = 'No Jump Delay',
         Default = false,
         Callback = function(v)
             _G.Pidors_NoJumpDelay = v
@@ -4399,34 +4405,34 @@ do
                     end)
                     _G.Pidors_NoJumpDelay_Hook = true
                 end
-                Library:Notify("No Jump Delay ON", 2)
+                Notifications:Create({Name = "No Jump Delay ON", LifeTime = 2})
             else
-                Library:Notify("No Jump Delay OFF", 2)
+                Notifications:Create({Name = "No Jump Delay OFF", LifeTime = 2})
             end
         end
     })
 
-    MiscGrp:AddToggle('AdminCheck', {
-        Text = 'Admin Check',
+    MiscGrp:Toggle({Flag = 'AdminCheck', 
+        Name = 'Admin Check',
         Default = false,
         Callback = function(v)
-            if v then AdminCheck_Enable(); Library:Notify("Admin Check ON", 2)
-            else AdminCheck_Disable(); Library:Notify("Admin Check OFF", 2) end
+            if v then AdminCheck_Enable(); Notifications:Create({Name = "Admin Check ON", LifeTime = 2})
+            else AdminCheck_Disable(); Notifications:Create({Name = "Admin Check OFF", LifeTime = 2}) end
         end
     })
 
-    local FarmGrp = Tabs.Misc:AddRightGroupbox('Farm')
+    local FarmGrp = Tabs.Misc:Section({Name = 'Farm', Side = 'Right'})
 
-    FarmGrp:AddToggle('NoFailLock', {
-        Text = 'No Fail Lockpick',
+    FarmGrp:Toggle({Flag = 'NoFailLock', 
+        Name = 'No Fail Lockpick',
         Default = false,
         Callback = function(v)
-            if v then NoFailLockpick_Enable(); Library:Notify("No Fail Lockpick ON", 2)
-            else NoFailLockpick_Disable(); Library:Notify("No Fail Lockpick OFF", 2) end
+            if v then NoFailLockpick_Enable(); Notifications:Create({Name = "No Fail Lockpick ON", LifeTime = 2})
+            else NoFailLockpick_Disable(); Notifications:Create({Name = "No Fail Lockpick OFF", LifeTime = 2}) end
         end
     })
-    FarmGrp:AddToggle('AutoClaimAllowance', {
-        Text = 'Auto Claim Allowance',
+    FarmGrp:Toggle({Flag = 'AutoClaimAllowance', 
+        Name = 'Auto Claim Allowance',
         Default = false,
         Callback = function(state)
             toggle_states.AutoClaimAllowance = state
@@ -4467,9 +4473,9 @@ do
         end
     })
 
-    local ToolsGrp = Tabs.Misc:AddRightGroupbox('Tools')
-    ToolsGrp:AddToggle('JerkTool', {
-        Text = 'Jerk Tool',
+    local ToolsGrp = Tabs.Misc:Section({Name = 'Tools', Side = 'Right'})
+    ToolsGrp:Toggle({Flag = 'JerkTool', 
+        Name = 'Jerk Tool',
         Default = false,
         Callback = function(v)
             if v then
@@ -4532,8 +4538,8 @@ do
         end
     })
 
-    local AnimsGrp = Tabs.Misc:AddLeftGroupbox('Animations')
-    local AnimsGrp2 = Tabs.Misc:AddLeftGroupbox('Animations2')
+    local AnimsGrp = Tabs.Misc:Section({Name = 'Animations', Side = 'Left'})
+    local AnimsGrp2 = Tabs.Misc:Section({Name = 'Animations2', Side = 'Left'})
     local playingTracks = {}
     local loopAnims = {['JumpAnim'] = true, ['Fake-Finish'] = true, ['Pickup1'] = true, ['Toggle1'] = true, ['Toggle2'] = true, ['Pickup2'] = true, ['Fake-DoorHit'] = true, ['Pickup'] = true, ['Slash1'] = true, ['Equip'] = true, ['Idle'] = true, ['Flinch2'] = true, ['Flinch1'] = true, ['Inspect'] = true, ['Finish'] = true, ['Door Hit'] = true}
     local allAnims = {}
@@ -4640,7 +4646,7 @@ do
         end
         local animName = animData.name
         local animId = animData.id
-        grp:AddToggle('Anim_' .. animName, {
+        grp:Toggle({Flag = 'Anim_' .. animName, 
             Text = animName,
             Default = false,
             Callback = function(v)
@@ -4681,8 +4687,8 @@ do
         })
     end
 
-    AnimsGrp2:AddToggle('Anim_FakeFinish_Loop', {
-        Text = 'Fake-Finish',
+    AnimsGrp2:Toggle({Flag = 'Anim_FakeFinish_Loop', 
+        Name = 'Fake-Finish',
         Default = false,
         Callback = function(v)
             if v then
@@ -4709,8 +4715,8 @@ do
         end
     })
 
-    AnimsGrp2:AddToggle('Anim_FakeDowned', {
-        Text = 'Fake-Downed',
+    AnimsGrp2:Toggle({Flag = 'Anim_FakeDowned', 
+        Name = 'Fake-Downed',
         Default = false,
         Callback = function(v)
             local charStats = ReplicatedStorage:FindFirstChild('CharStats')
@@ -4726,9 +4732,9 @@ do
         end
     })
 
-    local AnimsGrp3 = Tabs.Misc:AddLeftGroupbox('Axe Erradicator Anims')
-    AnimsGrp3:AddToggle('Anim_Slash1_Loop', {
-        Text = 'Slash1',
+    local AnimsGrp3 = Tabs.Misc:Section({Name = 'Axe Erradicator Anims', Side = 'Left'})
+    AnimsGrp3:Toggle({Flag = 'Anim_Slash1_Loop', 
+        Name = 'Slash1',
         Default = false,
         Callback = function(v)
             if v then
@@ -4755,8 +4761,8 @@ do
         end
     })
 
-    AnimsGrp3:AddToggle('Anim_Equip_Loop', {
-        Text = 'Equip',
+    AnimsGrp3:Toggle({Flag = 'Anim_Equip_Loop', 
+        Name = 'Equip',
         Default = false,
         Callback = function(v)
             if v then
@@ -4783,8 +4789,8 @@ do
         end
     })
 
-    AnimsGrp3:AddToggle('Anim_Idle_Loop', {
-        Text = 'Idle',
+    AnimsGrp3:Toggle({Flag = 'Anim_Idle_Loop', 
+        Name = 'Idle',
         Default = false,
         Callback = function(v)
             if v then
@@ -4811,8 +4817,8 @@ do
         end
     })
 
-    AnimsGrp3:AddToggle('Anim_Flinch2_Loop', {
-        Text = 'Flinch2',
+    AnimsGrp3:Toggle({Flag = 'Anim_Flinch2_Loop', 
+        Name = 'Flinch2',
         Default = false,
         Callback = function(v)
             if v then
@@ -4839,8 +4845,8 @@ do
         end
     })
 
-    AnimsGrp3:AddToggle('Anim_Flinch1_Loop', {
-        Text = 'Flinch1',
+    AnimsGrp3:Toggle({Flag = 'Anim_Flinch1_Loop', 
+        Name = 'Flinch1',
         Default = false,
         Callback = function(v)
             if v then
@@ -4867,8 +4873,8 @@ do
         end
     })
 
-    AnimsGrp3:AddToggle('Anim_Inspect_Loop', {
-        Text = 'Inspect',
+    AnimsGrp3:Toggle({Flag = 'Anim_Inspect_Loop', 
+        Name = 'Inspect',
         Default = false,
         Callback = function(v)
             if v then
@@ -4895,8 +4901,8 @@ do
         end
     })
 
-    AnimsGrp3:AddToggle('Anim_Finish_Loop', {
-        Text = 'Finish',
+    AnimsGrp3:Toggle({Flag = 'Anim_Finish_Loop', 
+        Name = 'Finish',
         Default = false,
         Callback = function(v)
             if v then
@@ -4923,8 +4929,8 @@ do
         end
     })
 
-    AnimsGrp3:AddToggle('Anim_DoorHit_Loop', {
-        Text = 'Door Hit',
+    AnimsGrp3:Toggle({Flag = 'Anim_DoorHit_Loop', 
+        Name = 'Door Hit',
         Default = false,
         Callback = function(v)
             if v then
@@ -4962,7 +4968,7 @@ function Crosshair:Setup()
     CLDot = Drawing.new("Circle"); CLDot.Visible = false; CLDot.Color = self.Col; CLDot.Thickness = self.Thick; CLDot.Filled = true; CLDot.NumSides = 12; CLDot.Radius = 2; CLDot.ZIndex = 999
     TargInd = Drawing.new("Circle"); TargInd.Visible = false; TargInd.Color = Color3.fromRGB(255,0,0); TargInd.Thickness = 2; TargInd.Filled = false; TargInd.NumSides = 24; TargInd.Radius = 20; TargInd.ZIndex = 998
     HitInd = Drawing.new("Square"); HitInd.Visible = false; HitInd.Color = Color3.fromRGB(255,255,255); HitInd.Thickness = 2; HitInd.Filled = false; HitInd.Size = Vector2.new(10,10); HitInd.ZIndex = 1000
-    Library:Notify("Crosshair init", 2)
+    Notifications:Create({Name = "Crosshair init", LifeTime = 2})
 end
 
 function Crosshair:Update()
@@ -5144,11 +5150,11 @@ end
 local function toggleChinaHat(state)
     ChinaHatState.Enabled = state
     if state then
-        setupChinaHat(); Library:Notify("China Hat enabled", 2)
+        setupChinaHat(); Notifications:Create({Name = "China Hat enabled", LifeTime = 2})
     else
         if ChinaHatState.Connection then ChinaHatState.Connection:Disconnect(); ChinaHatState.Connection = nil end
         if ChinaHatState.Hat then ChinaHatState.Hat:Destroy(); ChinaHatState.Hat = nil end
-        Library:Notify("China Hat disabled", 2)
+        Notifications:Create({Name = "China Hat disabled", LifeTime = 2})
     end
 end
 
@@ -5163,7 +5169,7 @@ local skyboxes = {
 }
 
 local function enSky(sName)
-    if not skyboxes[sName] then Library:Notify("Invalid sky!", 2); return false end
+    if not skyboxes[sName] then Notifications:Create({Name = "Invalid sky!", LifeTime = 2}); return false end
     local data = skyboxes[sName]
     if not SkyState.Orig then
         local ex = Lighting:FindFirstChildOfClass("Sky")
@@ -5185,13 +5191,13 @@ local function enSky(sName)
             end
         end)
     end
-    Library:Notify(sName.." sky on!", 2); return true
+    Notifications:Create({Name = sName.." sky on!", LifeTime = 2}); return true
 end
 local function disSky()
     for _, ch in pairs(Lighting:GetChildren()) do if ch:IsA("Sky") then ch:Destroy() end end
     if SkyState.Custom then SkyState.Custom:Destroy(); SkyState.Custom = nil end
     if SkyState.GuardConn then SkyState.GuardConn:Disconnect(); SkyState.GuardConn = nil end
-    if SkyState.Orig then SkyState.Orig:Clone().Parent = Lighting; Library:Notify("Orig sky back", 2) else Library:Notify("Sky off", 2) end
+    if SkyState.Orig then SkyState.Orig:Clone().Parent = Lighting; Notifications:Create({Name = "Orig sky back", LifeTime = 2}) else Notifications:Create({Name = "Sky off", LifeTime = 2}) end
     SkyState.On = false; SkyState.Selected = nil
 end
 
@@ -5370,26 +5376,26 @@ local function toggleBB(state)
         table.insert(BB.Conns, charC)
         local remC = LocalPlayer.CharacterRemoving:Connect(function() if BB.On then clrTracers() end end)
         table.insert(BB.Conns, remC)
-        Library:Notify("BulletBeam on", 2)
+        Notifications:Create({Name = "BulletBeam on", LifeTime = 2})
     else
         clrTracers()
         for _, c in pairs(BB.Conns) do if c then c:Disconnect() end end
         BB.Conns = {}
-        Library:Notify("BulletBeam off", 2)
+        Notifications:Create({Name = "BulletBeam off", LifeTime = 2})
     end
 end
 local function setBBCol(r,g,b) BB.Col = Color3.new(r,g,b) end
 
-local CLGroup = Tabs.Visuals:AddLeftGroupbox("Crosshair")
-CLGroup:AddToggle("CLToggle", {Text="Enable Crosshair", Default=false, Callback=function(v) Crosshair.On = v; Crosshair:Update() end})
-CLGroup:AddDropdown("CLStyle", {Values={"Cross","Dot","Circle"}, Default="Cross", Multi=false, Text="Style", Callback=function(v) Crosshair.Style = v; Crosshair:Setup(); Crosshair:Update() end})
-CLGroup:AddLabel("Color:"):AddColorPicker("CLColor", {Default=Crosshair.Col, Title="Color", Callback=function(v) Crosshair.Col = v; for i=1,4 do if CLLines[i] then CLLines[i].Color = v end end; if CLDot then CLDot.Color = v end; if CLCircle then CLCircle.Color = v end end})
-CLGroup:AddSlider("CLSize", {Text="Size", Default=12, Min=1, Max=50, Rounding=0, Compact=false, Callback=function(v) Crosshair.Size = v; Crosshair:Update() end})
-CLGroup:AddSlider("CLGap", {Text="Gap", Default=5, Min=0, Max=20, Rounding=0, Compact=false, Callback=function(v) Crosshair.Gap = v; Crosshair:Update() end})
-CLGroup:AddSlider("CLThick", {Text="Thickness", Default=1, Min=1, Max=5, Rounding=0, Compact=false, Callback=function(v) Crosshair.Thick = v; for i=1,4 do if CLLines[i] then CLLines[i].Thickness = v end end; if CLDot then CLDot.Thickness = v end; if CLCircle then CLCircle.Thickness = v end end})
-CLGroup:AddToggle("CLShowTarget", {Text="Show Target", Default=false, Callback=function(v) Crosshair.ShowTarget = v end})
-CLGroup:AddToggle("CLHitmarker", {Text="Hitmarker", Default=true, Callback=function(v) Crosshair.Hitmarker = v end})
-CLGroup:AddToggle("CLDynamic", {Text="Dynamic Crosshair", Default=false, Callback=function(v) Crosshair.Dynamic = v end})
+local CLGroup = Tabs.Visuals:Section({Name = 'Crosshair', Side = 'Left'})
+CLGroup:Toggle({Flag = 'CLToggle', Name = "Enable Crosshair", Default=false, Callback=function(v) Crosshair.On = v; Crosshair:Update() end})
+CLGroup:Dropdown({Flag = 'CLStyle', Values={"Cross","Dot","Circle"}, Default="Cross", Multi=false, Name = "Style", Callback=function(v) Crosshair.Style = v; Crosshair:Setup(); Crosshair:Update() end})
+CLGroup:Label({Name = 'Color:'}):Colorpicker({Flag = 'CLColor', Default=Crosshair.Col, Title="Color", Callback=function(v) Crosshair.Col = v; for i=1,4 do if CLLines[i] then CLLines[i].Color = v end end; if CLDot then CLDot.Color = v end; if CLCircle then CLCircle.Color = v end end})
+CLGroup:Slider({Flag = 'CLSize', Name = "Size", Default=12, Min=1, Max=50, Decimal = 1, Compact=false, Callback=function(v) Crosshair.Size = v; Crosshair:Update() end})
+CLGroup:Slider({Flag = 'CLGap', Name = "Gap", Default=5, Min=0, Max=20, Decimal = 1, Compact=false, Callback=function(v) Crosshair.Gap = v; Crosshair:Update() end})
+CLGroup:Slider({Flag = 'CLThick', Name = "Thickness", Default=1, Min=1, Max=5, Decimal = 1, Compact=false, Callback=function(v) Crosshair.Thick = v; for i=1,4 do if CLLines[i] then CLLines[i].Thickness = v end end; if CLDot then CLDot.Thickness = v end; if CLCircle then CLCircle.Thickness = v end end})
+CLGroup:Toggle({Flag = 'CLShowTarget', Name = "Show Target", Default=false, Callback=function(v) Crosshair.ShowTarget = v end})
+CLGroup:Toggle({Flag = 'CLHitmarker', Name = "Hitmarker", Default=true, Callback=function(v) Crosshair.Hitmarker = v end})
+CLGroup:Toggle({Flag = 'CLDynamic', Name = "Dynamic Crosshair", Default=false, Callback=function(v) Crosshair.Dynamic = v end})
 
 local CLConn = RunService.RenderStepped:Connect(function() if Crosshair.On then Crosshair:Update() end end)
 
@@ -5399,15 +5405,15 @@ task.spawn(function()
     if GNX then GNX.OnClientEvent:Connect(function(st,sc,gun,ft,sPos,dirs,silenced) if Crosshair.Hitmarker then Crosshair:ShowHit() end end) end
 end)
 
-local ViewVisualsGroup = Tabs.Visuals:AddRightGroupbox("View Visuals")
-local MapLightingToggle = ViewVisualsGroup:AddToggle("MapLightingToggle", {
-    Text = "Map Lighting", Default = false,
+local ViewVisualsGroup = Tabs.Visuals:Section({Name = 'View Visuals', Side = 'Right'})
+local MapLightingToggle = ViewVisualsGroup:Toggle({Flag = 'MapLightingToggle', 
+    Name = "Map Lighting", Default = false,
     Callback = function(state)
-        if state then MapLighting:Enable(); Library:Notify("Map Lighting enabled", 2)
-        else MapLighting:Disable(); Library:Notify("Map Lighting disabled", 2) end
+        if state then MapLighting:Enable(); Notifications:Create({Name = "Map Lighting enabled", LifeTime = 2})
+        else MapLighting:Disable(); Notifications:Create({Name = "Map Lighting disabled", LifeTime = 2}) end
     end
 })
-MapLightingToggle:AddColorPicker("MapLightingColor", {
+MapLightingToggle:Colorpicker({Flag = 'MapLightingColor', 
     Default = MapLighting.LightingColors[1].MainColor, Title = "Map Lighting Color",
     Callback = function(color)
         local closestIndex = 1; local closestDistance = math.huge
@@ -5416,15 +5422,15 @@ MapLightingToggle:AddColorPicker("MapLightingColor", {
             if distance < closestDistance then closestDistance = distance; closestIndex = i end
         end
         MapLighting.CurrentColorIndex = closestIndex
-        if MapLighting.Enabled then MapLighting:ApplyLighting(); Library:Notify("Map Lighting: " .. MapLighting.LightingColors[closestIndex].Name, 2) end
+        if MapLighting.Enabled then MapLighting:ApplyLighting(); Notifications:Create({Name = "Map Lighting: " .. MapLighting.LightingColors[closestIndex].Name, LifeTime = 2}) end
     end
 })
 
-local VisL = Tabs.Visuals:AddLeftGroupbox("ESP Extras")
-VisL:AddToggle("ChinaHatToggle", {
-    Text = "China Hat", Default = false,
+local VisL = Tabs.Visuals:Section({Name = 'ESP Extras', Side = 'Left'})
+VisL:Toggle({Flag = 'ChinaHatToggle', 
+    Name = "China Hat", Default = false,
     Callback = function(v) toggleChinaHat(v) end
-}):AddColorPicker("ChinaHatColor", {
+}):Colorpicker({Flag = 'ChinaHatColor', 
     Default = ChinaHatState.Color, Title = "China Hat Color",
     Callback = function(v)
         ChinaHatState.Color = v
@@ -5432,28 +5438,28 @@ VisL:AddToggle("ChinaHatToggle", {
             local highlight = ChinaHatState.Hat:FindFirstChildOfClass("Highlight")
             if highlight then highlight.FillColor = v; highlight.OutlineColor = v end
         end
-        Library:Notify("China Hat Color changed", 2)
+        Notifications:Create({Name = "China Hat Color changed", LifeTime = 2})
     end
 })
 
-local SkyG = Tabs.Visuals:AddLeftGroupbox("Skybox")
-SkyG:AddToggle("SkyToggle", {Text="Enable Skybox", Default=false, Callback=function(v) if v then local cs = Options.SkyDropdown and Options.SkyDropdown.Value or "Nebula"; enSky(cs) else disSky() end end})
-SkyG:AddDropdown("SkyDropdown", {Values={"Nebula","Red Nebula","Nebula Pink","White Galaxy","Purple Nebula"}, Default="Nebula", Multi=false, Text="Skybox Type", Callback=function(v) SkyState.Selected = v; if Toggles.SkyToggle and Toggles.SkyToggle.Value then enSky(v) end end})
+local SkyG = Tabs.Visuals:Section({Name = 'Skybox', Side = 'Left'})
+SkyG:Toggle({Flag = 'SkyToggle', Name = "Enable Skybox", Default=false, Callback=function(v) if v then local cs = Flags.SkyDropdown and Flags.SkyDropdown or "Nebula"; enSky(cs) else disSky() end end})
+SkyG:Dropdown({Flag = 'SkyDropdown', Values={"Nebula","Red Nebula","Nebula Pink","White Galaxy","Purple Nebula"}, Default="Nebula", Multi=false, Name = "Skybox Type", Callback=function(v) SkyState.Selected = v; if Flags.SkyToggle and Flags.SkyToggle then enSky(v) end end})
 
-local GunsVisR = Tabs.Visuals:AddRightGroupbox("Guns Visuals")
-GunsVisR:AddToggle("BBToggle", {Text="BulletBeam", Default=false, Callback=function(s) toggleBB(s) end})
-GunsVisR:AddLabel("Beam Color:"):AddColorPicker("BBColor", {Default=BB.Col, Title="BB Color", Callback=function(v) setBBCol(v.r,v.g,v.b); Library:Notify("BB color changed", 2) end})
-GunsVisR:AddSlider("BBThick", {Text="Thickness", Default=0.1, Min=0.01, Max=0.5, Rounding=2, Compact=false, Suffix=" studs", Callback=function(v) BB.Thick = v; Library:Notify("Thick: "..v, 2) end})
-GunsVisR:AddSlider("BBLife", {Text="Lifetime", Default=2, Min=0.1, Max=5, Rounding=1, Compact=false, Suffix="s", Callback=function(v) BB.Life = v; Library:Notify("Life: "..v.."s", 2) end})
-GunsVisR:AddSlider("BBTrans", {Text="Transparency", Default=0.7, Min=0, Max=1, Rounding=2, Compact=false, Callback=function(v) BB.Trans = v; Library:Notify("Trans: "..math.round(v*100).."%", 2) end})
-GunsVisR:AddDropdown("BBType", {Values={"Beam","Line"}, Default="Beam", Multi=false, Text="Type", Callback=function(v) BB.Type = v; clrTracers(); Library:Notify("Type: "..v, 2) end})
-GunsVisR:AddDropdown("BBTex", {Values={"Classic","Lightning","Rainbow","Smoke","Energy","Glitch","Custom"}, Default="Classic", Multi=false, Text="Texture", Callback=function(v) BB.CurTex = v; Library:Notify("Tex: "..v, 2) end})
-GunsVisR:AddInput("CustomTexIn", {Text="Custom Texture ID", Placeholder="rbxassetid://...", Default="", Callback=function(v) if v ~= "" and v:match("^rbxassetid://%d+$") then BB.CustomTex = v; if BB.CurTex == "Custom" then Library:Notify("Custom tex updated", 2) end elseif v ~= "" then Library:Notify("Invalid ID", 2) end end})
-GunsVisR:AddButton({Text="Clear Tracers", Func=function() clrTracers(); Library:Notify("Tracers cleared", 2) end, DoubleClick=false})
-local tcLabel = GunsVisR:AddLabel("Active: 0")
+local GunsVisR = Tabs.Visuals:Section({Name = 'Guns Visuals', Side = 'Right'})
+GunsVisR:Toggle({Flag = 'BBToggle', Name = "BulletBeam", Default=false, Callback=function(s) toggleBB(s) end})
+GunsVisR:Label({Name = 'Beam Color:'}):Colorpicker({Flag = 'BBColor', Default=BB.Col, Title="BB Color", Callback=function(v) setBBCol(v.r,v.g,v.b); Notifications:Create({Name = "BB color changed", LifeTime = 2}) end})
+GunsVisR:Slider({Flag = 'BBThick', Name = "Thickness", Default=0.1, Min=0.01, Max=0.5, Decimal = 0.01, Compact=false, Suffix=" studs", Callback=function(v) BB.Thick = v; Notifications:Create({Name = "Thick: "..v, LifeTime = 2}) end})
+GunsVisR:Slider({Flag = 'BBLife', Name = "Lifetime", Default=2, Min=0.1, Max=5, Decimal = 0.1, Compact=false, Suffix="s", Callback=function(v) BB.Life = v; Notifications:Create({Name = "Life: "..v.."s", LifeTime = 2}) end})
+GunsVisR:Slider({Flag = 'BBTrans', Name = "Transparency", Default=0.7, Min=0, Max=1, Decimal = 0.01, Compact=false, Callback=function(v) BB.Trans = v; Notifications:Create({Name = "Trans: "..math.round(v*100).."%", LifeTime = 2}) end})
+GunsVisR:Dropdown({Flag = 'BBType', Values={"Beam","Line"}, Default="Beam", Multi=false, Name = "Type", Callback=function(v) BB.Type = v; clrTracers(); Notifications:Create({Name = "Type: "..v, LifeTime = 2}) end})
+GunsVisR:Dropdown({Flag = 'BBTex', Values={"Classic","Lightning","Rainbow","Smoke","Energy","Glitch","Custom"}, Default="Classic", Multi=false, Name = "Texture", Callback=function(v) BB.CurTex = v; Notifications:Create({Name = "Tex: "..v, LifeTime = 2}) end})
+GunsVisR:AddInput("CustomTexIn", {Text="Custom Texture ID", Placeholder="rbxassetid://...", Default="", Callback=function(v) if v ~= "" and v:match("^rbxassetid://%d+$") then BB.CustomTex = v; if BB.CurTex == "Custom" then Notifications:Create({Name = "Custom tex updated", LifeTime = 2}) end elseif v ~= "" then Notifications:Create({Name = "Invalid ID", LifeTime = 2}) end end})
+GunsVisR:AddButton({Text="Clear Tracers", Func=function() clrTracers(); Notifications:Create({Name = "Tracers cleared", LifeTime = 2}) end, DoubleClick=false})
+local tcLabel = GunsVisR:Label({Name = 'Active: 0'})
 task.spawn(function() while task.wait(0.5) do local cnt=0; for _ in pairs(BB.Active) do cnt=cnt+1 end; tcLabel:SetText("Active: "..cnt) end end)
 
-local SkinChangerTab = Window:AddTab('SkinChanger')
+local SkinChangerTab = Window:Tab({Name = 'SkinChanger'})
 
 function G17Sights(tool, mat, col)
     for _, v in pairs(tool:GetDescendants()) do
@@ -5657,15 +5663,15 @@ function getWepsInClass(cls) if not SkinsDB[cls] then return {} end; local w = {
 function getSkinsForWep(cls, wn) if not SkinsDB[cls] or not SkinsDB[cls][wn] then return {} end; local s = {}; for sn, _ in pairs(SkinsDB[cls][wn]) do table.insert(s, sn) end; table.sort(s); return s end
 
 function applySkin()
-    if not SkinState.On then Library:Notify("Enable SkinChanger first!", 2); return false end
-    if not SkinState.Weapon or not SkinState.Skin then Library:Notify("Select weapon and skin!", 2); return false end
-    c = LocalPlayer.Character; if not c then Library:Notify("No char!", 2); return false end
-    t = c:FindFirstChild(SkinState.Weapon); if not t then Library:Notify("Equip "..SkinState.Weapon.." first!", 2); return false end
-    sData = SkinsDB[SkinState.Class][SkinState.Weapon][SkinState.Skin]; if not sData then Library:Notify("No skin data!", 2); return false end    local suc, err = pcall(function()
+    if not SkinState.On then Notifications:Create({Name = "Enable SkinChanger first!", LifeTime = 2}); return false end
+    if not SkinState.Weapon or not SkinState.Skin then Notifications:Create({Name = "Select weapon and skin!", LifeTime = 2}); return false end
+    c = LocalPlayer.Character; if not c then Notifications:Create({Name = "No char!", LifeTime = 2}); return false end
+    t = c:FindFirstChild(SkinState.Weapon); if not t then Notifications:Create({Name = "Equip "..SkinState.Weapon.." first!", LifeTime = 2}); return false end
+    sData = SkinsDB[SkinState.Class][SkinState.Weapon][SkinState.Skin]; if not sData then Notifications:Create({Name = "No skin data!", LifeTime = 2}); return false end    local suc, err = pcall(function()
         for _, d in pairs(t:GetDescendants()) do if d:IsA("MeshPart") then d.TextureID = sData.id; if d:FindFirstChildOfClass("SurfaceAppearance") then d:FindFirstChildOfClass("SurfaceAppearance"):Destroy() end end end
         if sData.customApply then sData.customApply(t) end
     end)
-    if suc then Library:Notify("Skin to "..SkinState.Weapon, 2); return true else warn("Skin err:", err); Library:Notify("Skin fail!", 2); return false end
+    if suc then Notifications:Create({Name = "Skin to "..SkinState.Weapon, LifeTime = 2}); return true else warn("Skin err:", err); Notifications:Create({Name = "Skin fail!", LifeTime = 2}); return false end
 end
 
 function setupAutoApply()
@@ -5685,7 +5691,7 @@ function setupAutoApply()
     end
 end
 
-function saveSkins() if writefile then pcall(function() writefile("starlight_skins.json", game:GetService("HttpService"):JSONEncode(SkinState.Equipped)) end) else Library:Notify("No writefile", 2) end end
+function saveSkins() if writefile then pcall(function() writefile("starlight_skins.json", game:GetService("HttpService"):JSONEncode(SkinState.Equipped)) end) else Notifications:Create({Name = "No writefile", LifeTime = 2}) end end
 function loadSkins() if readfile and isfile then pcall(function() if isfile("starlight_skins.json") then SkinState.Equipped = game:GetService("HttpService"):JSONDecode(readfile("starlight_skins.json")) end end) end end
 
 SkinState = {
@@ -5695,9 +5701,9 @@ SkinState = {
 
 task.spawn(function()
     repeat task.wait() until SkinChangerTab; task.wait(2)
-    local SkinL = SkinChangerTab:AddLeftGroupbox("Skin Changer")
-    local SkinR = SkinChangerTab:AddRightGroupbox("Controls")
-    CustomModelsGroup = SkinChangerTab:AddLeftGroupbox("Custom Models")
+    local SkinL = SkinChangerTab:Section({Name = 'Skin Changer', Side = 'Left'})
+    local SkinR = SkinChangerTab:Section({Name = 'Controls', Side = 'Right'})
+    CustomModelsGroup = SkinChangerTab:Section({Name = 'Custom Models', Side = 'Left'})
 
 
 currentCMType = "M4:Subzero"
@@ -8479,10 +8485,10 @@ function stopCMSkinChecking()
     removeCMAllSkins()
 end
 
-local CMDropdown = CustomModelsGroup:AddDropdown("CMType", {
-    Text = "Select Model",
+local CMDropdown = CustomModelsGroup:Dropdown({Flag = 'CMType', 
+    Name = "Select Model",
     Default = "M4:Subzero",
-    Values = {
+    Options = {
         "M4:Subzero",
         "M4:Dragon", 
         "M4:Heritage",
@@ -8498,8 +8504,8 @@ local CMDropdown = CustomModelsGroup:AddDropdown("CMType", {
     Tooltip = "Choose which custom model to apply",
 })
 
-local CMToggle = CustomModelsGroup:AddToggle("CMEnable", {
-    Text = "Enable Custom Model",
+local CMToggle = CustomModelsGroup:Toggle({Flag = 'CMEnable', 
+    Name = "Enable Custom Model",
     Default = false,
     Tooltip = "Enable/disable custom model application",
 })
@@ -8577,11 +8583,11 @@ end)
     local initWeps = getWepsInClass("Pistols")
     local initSkins = {}; if #initWeps > 0 then initSkins = getSkinsForWep("Pistols", initWeps[1]) end
     local clsDrop, wepDrop, skinDrop
-    SkinL:AddToggle("EnableSkinChanger", {Text="Enable SkinChanger", Default=false, Callback=function(s)
-        SkinState.On = s; Library:Notify(s and "SkinChanger on" or "SkinChanger off", 2)
+    SkinL:Toggle({Flag = 'EnableSkinChanger', Name = "Enable SkinChanger", Default=false, Callback=function(s)
+        SkinState.On = s; Notifications:Create({Name = s and "SkinChanger on" or "SkinChanger off", LifeTime = 2})
         if s then if SkinState.Auto then setupAutoApply() end else for _, c in pairs(SkinState.Conns) do if c then c:Disconnect() end end; SkinState.Conns = {} end
     end})
-    clsDrop = SkinL:AddDropdown("WeaponClass", {Text="Weapon Class", Values=SkinState.Classes, Default="Pistols", Multi=false, Callback=function(v)
+    clsDrop = SkinL:Dropdown({Flag = 'WeaponClass', Name = "Weapon Class", Values=SkinState.Classes, Default="Pistols", Multi=false, Callback=function(v)
         SkinState.Class = v; SkinState.Weapon = nil; SkinState.Skin = nil; local w = getWepsInClass(v)
         if wepDrop then
             wepDrop:SetValues(w)
@@ -8589,48 +8595,41 @@ end)
                 if skinDrop then skinDrop:SetValues(s); if #s > 0 then skinDrop:SetValue(s[1]); SkinState.Skin = s[1] else skinDrop:SetValue(""); SkinState.Skin = nil end end
             else wepDrop:SetValue(""); if skinDrop then skinDrop:SetValues({}); skinDrop:SetValue("") end end
         end
-        Library:Notify("Class: "..v, 1)
+        Notifications:Create({Name = "Class: "..v, LifeTime = 1})
     end})
-    wepDrop = SkinL:AddDropdown("WeaponSelect", {Text="Weapon", Values=initWeps, Default=#initWeps>0 and initWeps[1] or "", Multi=false, Callback=function(v)
+    wepDrop = SkinL:Dropdown({Flag = 'WeaponSelect', Name = "Weapon", Values=initWeps, Default=#initWeps>0 and initWeps[1] or "", Multi=false, Callback=function(v)
         if v == "" or not v then SkinState.Weapon = nil; SkinState.Skin = nil; if skinDrop then skinDrop:SetValues({}); skinDrop:SetValue("") end; return end
         SkinState.Weapon = v; if SkinState.Class then local s = getSkinsForWep(SkinState.Class, v)
             if skinDrop then skinDrop:SetValues(s); if #s > 0 then skinDrop:SetValue(s[1]); SkinState.Skin = s[1] else skinDrop:SetValue(""); SkinState.Skin = nil end end
         end
-        Library:Notify("Weapon: "..v, 1)
+        Notifications:Create({Name = "Weapon: "..v, LifeTime = 1})
     end})
-    skinDrop = SkinL:AddDropdown("SkinSelect", {Text="Skin", Values=initSkins, Default=#initSkins>0 and initSkins[1] or "", Multi=false, Callback=function(v)
+    skinDrop = SkinL:Dropdown({Flag = 'SkinSelect', Name = "Skin", Values=initSkins, Default=#initSkins>0 and initSkins[1] or "", Multi=false, Callback=function(v)
         if v == "" or not v then SkinState.Skin = nil; return end
         SkinState.Skin = v; if SkinState.Class and SkinState.Weapon and v then
             local sInfo = SkinsDB[SkinState.Class][SkinState.Weapon][v]; if sInfo then
                 SkinState.Equipped[SkinState.Weapon] = {class=SkinState.Class, name=v, id=sInfo.id, customApply=sInfo.customApply}
-                if SkinState.Auto and SkinState.On then task.wait(0.5); applySkin() else Library:Notify("Skin: "..v, 1) end
+                if SkinState.Auto and SkinState.On then task.wait(0.5); applySkin() else Notifications:Create({Name = "Skin: "..v, LifeTime = 1}) end
             end
         end
     end})
     SkinR:AddButton({Text="Apply Skin", Func=applySkin})
-    SkinR:AddToggle("AutoApply", {Text="Auto Apply", Default=false, Callback=function(s)
+    SkinR:Toggle({Flag = 'AutoApply', Name = "Auto Apply", Default=false, Callback=function(s)
         SkinState.Auto = s; setupAutoApply()
         if s and SkinState.On and SkinState.Weapon and SkinState.Skin then task.wait(0.5); applySkin() end
-        Library:Notify(s and "Auto on" or "Auto off", 2)
+        Notifications:Create({Name = s and "Auto on" or "Auto off", LifeTime = 2})
     end})
-    SkinR:AddButton({Text="Save Skins", Func=function() if writefile then pcall(function() writefile("starlight_skins.json", game:GetService("HttpService"):JSONEncode(SkinState.Equipped)) end) else Library:Notify("No writefile", 2) end end})
+    SkinR:AddButton({Text="Save Skins", Func=function() if writefile then pcall(function() writefile("starlight_skins.json", game:GetService("HttpService"):JSONEncode(SkinState.Equipped)) end) else Notifications:Create({Name = "No writefile", LifeTime = 2}) end end})
     SkinR:AddButton({Text="Load Skins", Func=function() if readfile and isfile then pcall(function() if isfile("starlight_skins.json") then SkinState.Equipped = game:GetService("HttpService"):JSONDecode(readfile("starlight_skins.json")) end end) end end})
-    SkinR:AddButton({Text="Clear All Skins", Func=function() SkinState.Equipped = {}; Library:Notify("Skins cleared", 2) end})
-    local status = SkinR:AddLabel("Status: Init...")
+    SkinR:AddButton({Text="Clear All Skins", Func=function() SkinState.Equipped = {}; Notifications:Create({Name = "Skins cleared", LifeTime = 2}) end})
+    local status = SkinR:Label({Name = 'Status: Init...'})
     if #initWeps > 0 then SkinState.Weapon = initWeps[1]; if #initSkins > 0 then SkinState.Skin = initSkins[1] end end
     pcall(function() if readfile and isfile and isfile("starlight_skins.json") then SkinState.Equipped = game:GetService("HttpService"):JSONDecode(readfile("starlight_skins.json")) end end)
     task.spawn(function() task.wait(0.5); if clsDrop and clsDrop.Callback then clsDrop.Callback("Pistols") end end)
-    SkinState.Loaded = true; status:SetText("Status: Ready"); Library:Notify("SkinChanger loaded!", 2)
+    SkinState.Loaded = true; status:SetText("Status: Ready"); Notifications:Create({Name = "SkinChanger loaded!", LifeTime = 2})
 end)
 
-ThemeManager:SetLibrary(Library)
-ThemeManager:SetFolder('pidors')
-ThemeManager:ApplyToTab(Tabs['UI Settings'])
 
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetFolder('pidors')
-SaveManager:BuildConfigSection(Tabs['UI Settings'])
 
 
 local function onCharDied()
@@ -8654,6 +8653,6 @@ if LocalPlayer.Character then
     if hum then hum.Died:Connect(onCharDied) end
 end
 
-Library:Notify("pidors.cc v5.0 loaded!", 3)
+Notifications:Create({Name = "pidors.cc v5.0 loaded!", LifeTime = 3})
 
-
+Library:Configs(Window)
